@@ -7,7 +7,7 @@ SILATAR V2 Mobile App adalah aplikasi Flutter untuk platform Android/iOS yang di
 ---
 
 ## Status: DALAM PROGRES
-## Last Updated: 2026-08-02
+## Last Updated: 2026-08-03
 
 ---
 
@@ -99,6 +99,22 @@ SILATAR V2 Mobile App adalah aplikasi Flutter untuk platform Android/iOS yang di
 - [x] Support adb reverse (127.0.0.1:8000)
 - [x] Support WiFi IP address connection
 - [x] Test API endpoints working
+
+### Phase 12: Dashboard & UI Improvements ✅ (BARU)
+
+- [x] Add user photo di dashboard header (pp field dari backend)
+- [x] Improve Quick Actions dengan 2 baris (Ajukan Layanan, Pengajuan Saya, Presensi, Kegiatan, Info)
+- [x] Fix stats card overflow issues
+- [x] Improve Quick Actions UI dengan gradient dan shadow
+- [x] Update bottom nav: Home, Layanan, Riwayat Presensi, Profil
+- [x] Fix User model type parsing (int/String)
+
+### Phase 13: Auto-Login & Remember Me ✅ (BARU)
+
+- [x] Add remember me storage di StorageService
+- [x] Save user data dan preference saat login
+- [x] Implement auto-login saat app dibuka
+- [x] Full logout clear semua data
 
 ---
 
@@ -192,28 +208,39 @@ assets/
 ```
 silatar_v2/ (Lokasi: C:\silatar_v2)
 ├── lib/
-│   ├── main.dart                          # Entry point + Splash Screen
+│   ├── main.dart                          # Entry point + Splash Screen + Auto-login
 │   ├── core/
+│   │   ├── models/
+│   │   │   └── user_model.dart           # User model dengan pp field
 │   │   ├── theme/
 │   │   │   ├── app_theme.dart           # Original theme
-│   │   │   └── neo_mirai_theme.dart     # NEW - Web-matching theme
+│   │   │   └── neo_mirai_theme.dart     # Web-matching theme
 │   │   ├── utils/
 │   │   │   └── responsive.dart          # Responsive helpers
-│   │   └── widgets/
-│   │       └── neo_components.dart     # Responsive widgets
+│   │   ├── widgets/
+│   │   │   └── neo_components.dart     # Responsive widgets
+│   │   └── services/
+│   │       ├── storage_service.dart     # Token & user storage
+│   │       ├── api_service.dart        # HTTP client
+│   │       ├── auth_service.dart       # Auth API
+│   │       ├── layanan_service.dart     # Layanan API
+│   │       └── pengajuan_service.dart   # Pengajuan API
 │   └── features/
 │       ├── welcome/
-│       │   └── welcome_page.dart        # Welcome page (updated)
-│       └── login/
-│           └── login_page.dart          # Login page (updated)
+│       │   └── welcome_page.dart        # Welcome page
+│       ├── login/
+│       │   └── login_page.dart          # Login page + remember me
+│       ├── dashboard/
+│       │   └── dashboard_page.dart      # Dashboard (Home)
+│       ├── layanan/
+│       │   └── layanan_page.dart        # Katalog layanan
+│       ├── pengajuan/
+│       │   └── pengajuan_page.dart      # Pengajuan Saya
+│       └── profile/
+│           └── profile_page.dart          # Profil user
 ├── assets/
-│   ├── fonts/                           # Poppins font family
-│   ├── images/                          # Images & icons from web
-│   │   ├── logo.webp
-│   │   ├── header.webp
-│   │   ├── template/
-│   │   └── ikon/
-│   └── icons/
+│   ├── fonts/                           # Poppins & Chakra Petch fonts
+│   └── images/                          # Images & icons from web
 └── pubspec.yaml
 ```
 
@@ -223,32 +250,39 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 
 | File | Perubahan |
 |------|-----------|
-| `routes/api.php` | **BARU** - API routes |
-| `app/Http/Controllers/Api/BaseApiController.php` | **BARU** - Base controller untuk API |
-| `app/Http/Controllers/Api/AuthController.php` | **BARU** - Auth endpoints |
-| `app/Http/Controllers/Api/LayananController.php` | **BARU** - Layanan endpoints |
-| `app/Http/Controllers/Api/PengajuanController.php` | **BARU** - Pengajuan endpoints |
-| `app/Http/Controllers/Api/UserController.php` | **BARU** - User profile endpoints |
-| `bootstrap/app.php` | Update - register API routes |
+| `routes/api.php` | API routes dengan auth:sanctum |
+| `app/Http/Controllers/Api/BaseApiController.php` | Base controller dengan response helpers |
+| `app/Http/Controllers/Api/AuthController.php` | Auth endpoints + pp field |
+| `app/Http/Controllers/Api/LayananController.php` | Layanan endpoints |
+| `app/Http/Controllers/Api/PengajuanController.php` | Pengajuan endpoints |
+| `app/Http/Controllers/Api/UserController.php` | User profile endpoints |
+| `app/Models/User.php` | Update dengan HasApiTokens + pp field |
+| `bootstrap/app.php` | Register API routes |
+| `config/sanctum.php` | Sanctum configuration |
+| `database/migrations/*_create_personal_access_tokens_table.php` | Sanctum migration |
+| `composer.json` | Add sanctum dependency |
 
 ## Files yang Dimodifikasi/Ditambahkan (Flutter)
 
 | File | Perubahan |
 |------|-----------|
-| `lib/main.dart` | Entry point dengan splash screen + StorageService init |
-| `lib/core/theme/neo_mirai_theme.dart` | **BARU** - Theme sesuai web SILATAR V2 |
+| `lib/main.dart` | Entry point + Splash Screen + Auto-login |
+| `lib/core/models/user_model.dart` | User model dengan pp, foto, type parsing |
+| `lib/core/services/storage_service.dart` | Remember me, JSON encode/decode |
+| `lib/core/services/api_service.dart` | Token storage, logout clear |
+| `lib/core/theme/neo_mirai_theme.dart` | Theme sesuai web SILATAR V2 |
 | `lib/core/theme/app_theme.dart` | Theme original |
 | `lib/core/utils/responsive.dart` | Responsive helper utilities |
 | `lib/core/widgets/neo_components.dart` | Widgets dengan theme baru |
-| `lib/core/services/storage_service.dart` | **BARU** - Token management |
-| `lib/core/services/api_client.dart` | **BARU** - Dio HTTP client |
-| `lib/core/services/auth_service.dart` | **BARU** - Auth API service |
-| `lib/core/services/layanan_service.dart` | **BARU** - Layanan API service |
-| `lib/core/services/pengajuan_service.dart` | **BARU** - Pengajuan API service |
-| `lib/features/welcome/welcome_page.dart` | Welcome page (theme baru) |
-| `lib/features/login/login_page.dart` | Login page (theme baru) |
-| `assets/images/*` | **BARU** - Assets dari web project |
-| `pubspec.yaml` | Update - add dio dependency |
+| `lib/core/services/api_client.dart` | Dio HTTP client |
+| `lib/core/services/auth_service.dart` | Auth API service |
+| `lib/core/services/layanan_service.dart` | Layanan API service |
+| `lib/core/services/pengajuan_service.dart` | Pengajuan API service |
+| `lib/features/dashboard/dashboard_page.dart` | Dashboard dengan user photo, quick actions |
+| `lib/features/welcome/welcome_page.dart` | Welcome page |
+| `lib/features/login/login_page.dart` | Login page + remember me |
+| `assets/images/*` | Assets dari web project |
+| `pubspec.yaml` | Dependencies (dio, etc) |
 
 ---
 
@@ -256,21 +290,21 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 
 ### Priority 1: Core Pages (Flutter UI)
 
-- [ ] **Home Page** - Dashboard utama dengan bottom navigation
+- [x] **Dashboard Page** - Dashboard utama dengan bottom navigation ✅
+- [x] **User Photo** - Tampilkan foto user di header
 - [ ] **Katalog Layanan** - Daftar layanan yang tersedia
 - [ ] **Detail Layanan** - Info lengkap layanan
 - [ ] **Form Pengajuan** - Form ajukan layanan baru
-- [ ] **Tracking Pengajuan** - Lacak status pengajuan
+- [ ] **Riwayat Presensi** - Halaman presensi (placeholder)
 - [ ] **Profile Page** - Profil user dan settings
 
 ### Priority 2: Integration (UI + API)
 
-- [ ] Connect Login page dengan AuthService
-- [ ] Connect Home page dengan API data
+- [x] Connect Login dengan AuthService
+- [x] Auto-login dengan remember me
+- [ ] Connect Dashboard dengan API data (stats, greeting)
 - [ ] Connect Katalog Layanan dengan LayananService
 - [ ] Connect Pengajuan page dengan PengajuanService
-- [ ] Implementasi state management (Provider)
-- [ ] Test API integration
 
 ### Priority 3: Additional Features
 
@@ -310,13 +344,25 @@ Phase 10: Sanctum Auth    ✅ DONE
 ├── API middleware
 └── Login email/NIP fix
 
-Phase 11: Core Features     📋 NEXT
-├── Home page + navigation
-├── Katalog layanan
-├── Form pengajuan
-└── Tracking pengajuan
+Phase 11: Dashboard UI    ✅ DONE
+├── User photo support
+├── Quick Actions cards
+├── Stats grid (responsive)
+└── Bottom nav
 
-Phase 12: Advanced          📋 PLANNED
+Phase 12: Auto-Login     ✅ DONE
+├── Remember me feature
+├── StorageService
+├── Auto-login on startup
+└── Full logout
+
+Phase 13: Katalog & Form 📋 NEXT
+├── Layanan page
+├── Form pengajuan
+├── Detail layanan
+└── API integration
+
+Phase 14: Advanced        📋 PLANNED
 ├── Push notifications
 ├── Offline mode
 └── File upload
@@ -325,6 +371,18 @@ Phase 12: Advanced          📋 PLANNED
 ---
 
 ## Changelog
+
+### 2026-08-03 - Session 6
+
+- ✅ Add user photo di dashboard header (pp field dari backend)
+- ✅ Improve Quick Actions dengan card designs baru (2 row)
+- ✅ Fix stats card overflow issues (responsive sizing)
+- ✅ Update bottom nav: Home, Layanan, Riwayat Presensi, Profil
+- ✅ Fix User model type parsing (int -> String conversion)
+- ✅ Add auto-login dengan remember me feature
+- ✅ Update StorageService dengan JSON encode/decode user data
+- ✅ Update Backend AuthController: add pp, nomor_induk, unit_id fields
+- ✅ Commit & push: Flutter 7b2be59, Backend 70d5ac2
 
 ### 2026-08-02 - Session 5
 
@@ -382,12 +440,15 @@ Phase 12: Advanced          📋 PLANNED
 
 ## Notes
 
-1. **Lokasi Project**: Project dipindahkan ke `C:\silatar_v2` karena path terlalu panjang
-2. **Device**: Samsung SM S911B (Samsung Galaxy S23) berhasil digunakan untuk testing
-3. **Theme**: NEO MIRAI theme dengan warna Gold (#B08D57) sesuai web SILATAR V2
-4. **Font**: Chakra Petch untuk headings/buttons, Poppins untuk body text
-5. **Assets**: 80+ ikon status dan background images dari web project
-6. **Backend API**: Laravel API sudah dibuat di `d:\work\SourceCode\silatarV2`
+1. **Lokasi Project**: `C:\silatar_v2`
+2. **GitHub Repositories**:
+   - Flutter: https://github.com/inggit2186/silatarV3-flutter (branch: main)
+   - Backend: https://github.com/inggit2186/silatarv3 (branch: main)
+3. **Device**: Samsung SM S911B (Samsung Galaxy S23)
+4. **Theme**: NEO MIRAI theme dengan warna Gold (#B08D57)
+5. **Font**: Chakra Petch untuk headings, Poppins untuk body
+6. **Backend**: Laravel API dengan Sanctum auth di `d:\work\SourceCode\silatarV2`
+7. **API Testing**: USB debugging dengan `adb reverse tcp:8000 tcp:8000`
 
 ---
 
