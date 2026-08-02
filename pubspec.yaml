@@ -1,0 +1,55 @@
+name: silatar_v2
+description: "SILATAR V2 - Aplikasi Mobile Layanan Kementerian Agama Tanah Datar"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Icons
+  flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  provider: ^6.1.2
+
+  # HTTP & API
+  http: ^1.2.2
+
+  # Local Storage
+  shared_preferences: ^2.3.3
+
+  # Image caching
+  cached_network_image: ^3.4.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/images/template/
+    - assets/images/ikon/
+    - assets/icons/
+    - assets/fonts/
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
