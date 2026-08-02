@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/models/user_model.dart';
@@ -106,8 +107,11 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
   }
 
   Widget _buildHeader(BuildContext context) {
+    final bool hasPhoto = _user?.hasPhoto ?? false;
+    final String? photoUrl = _user?.photoUrl;
+
     return Container(
-      padding: EdgeInsets.all(Responsive.cardPadding(16)),
+      padding: EdgeInsets.all(Responsive.cardPadding(12)),
       decoration: BoxDecoration(
         color: NeoMiraiColors.rice,
         boxShadow: [
@@ -120,25 +124,16 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
       ),
       child: Row(
         children: [
-          // User Avatar
-          Container(
-            padding: EdgeInsets.all(Responsive.radius(8)),
-            decoration: BoxDecoration(
-              gradient: NeoMiraiTheme.goldGradient,
-              borderRadius: BorderRadius.circular(Responsive.radius(14)),
-            ),
-            child: Icon(
-              Icons.person_rounded,
-              size: Responsive.iconSize(24),
-              color: NeoMiraiColors.rice,
-            ),
-          ),
+          // User Avatar / Photo
+          _buildUserAvatar(hasPhoto, photoUrl),
+
           SizedBox(width: Responsive.spacing(12)),
 
           // User Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Selamat Datang,',
@@ -150,10 +145,12 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
                 Text(
                   _user?.displayName ?? 'Warga',
                   style: TextStyle(
-                    fontSize: Responsive.fontSize(15),
+                    fontSize: Responsive.fontSize(14),
                     fontWeight: FontWeight.bold,
                     color: NeoMiraiColors.ink,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -210,6 +207,43 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUserAvatar(bool hasPhoto, String? photoUrl) {
+    final double avatarSize = context.isSmallPhone ? 40 : 48;
+
+    if (hasPhoto && photoUrl != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(Responsive.radius(12)),
+        child: CachedNetworkImage(
+          imageUrl: photoUrl,
+          width: avatarSize,
+          height: avatarSize,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => _buildDefaultAvatar(avatarSize),
+          errorWidget: (context, url, error) => _buildDefaultAvatar(avatarSize),
+        ),
+      );
+    }
+
+    return _buildDefaultAvatar(avatarSize);
+  }
+
+  Widget _buildDefaultAvatar(double size) {
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(Responsive.radius(8)),
+      decoration: BoxDecoration(
+        gradient: NeoMiraiTheme.goldGradient,
+        borderRadius: BorderRadius.circular(Responsive.radius(12)),
+      ),
+      child: Icon(
+        Icons.person_rounded,
+        size: Responsive.iconSize(20),
+        color: NeoMiraiColors.rice,
       ),
     );
   }
@@ -316,11 +350,13 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
       greetingIcon = Icons.nightlight_rounded;
     }
 
+    final bool isSmall = context.isSmallPhone;
+
     return Container(
-      padding: EdgeInsets.all(Responsive.cardPadding(20)),
+      padding: EdgeInsets.all(Responsive.cardPadding(isSmall ? 14 : 20)),
       decoration: BoxDecoration(
         gradient: NeoMiraiTheme.nightGradient,
-        borderRadius: BorderRadius.circular(Responsive.radius(20)),
+        borderRadius: BorderRadius.circular(Responsive.radius(isSmall ? 16 : 20)),
         boxShadow: [
           BoxShadow(
             color: NeoMiraiColors.night.withValues(alpha: 0.3),
@@ -340,48 +376,56 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
                     Icon(
                       greetingIcon,
                       color: NeoMiraiColors.gold,
-                      size: Responsive.iconSize(22),
+                      size: Responsive.iconSize(isSmall ? 18 : 22),
                     ),
-                    SizedBox(width: Responsive.spacing(8)),
-                    Text(
-                      greeting,
-                      style: TextStyle(
-                        fontSize: Responsive.fontSize(14),
-                        color: NeoMiraiColors.rice,
-                        fontWeight: FontWeight.w500,
+                    SizedBox(width: Responsive.spacing(6)),
+                    Expanded(
+                      child: Text(
+                        greeting,
+                        style: TextStyle(
+                          fontSize: Responsive.fontSize(isSmall ? 12 : 14),
+                          color: NeoMiraiColors.rice,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: Responsive.spacing(6)),
+                SizedBox(height: Responsive.spacing(4)),
                 Text(
                   _user?.displayName ?? 'Warga',
                   style: TextStyle(
-                    fontSize: Responsive.fontSize(20),
+                    fontSize: Responsive.fontSize(isSmall ? 16 : 20),
                     fontWeight: FontWeight.bold,
                     color: NeoMiraiColors.rice,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                SizedBox(height: Responsive.spacing(4)),
+                SizedBox(height: Responsive.spacing(2)),
                 Text(
-                  'Kementerian Agama Tanah Datar',
+                  'Kemenag Tanah Datar',
                   style: TextStyle(
-                    fontSize: Responsive.fontSize(11),
+                    fontSize: Responsive.fontSize(isSmall ? 9 : 11),
                     color: NeoMiraiColors.rice.withValues(alpha: 0.8),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
+          SizedBox(width: Responsive.spacing(12)),
           Container(
-            padding: EdgeInsets.all(Responsive.radius(12)),
+            padding: EdgeInsets.all(Responsive.radius(isSmall ? 10 : 12)),
             decoration: BoxDecoration(
               color: NeoMiraiColors.gold.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(Responsive.radius(16)),
             ),
             child: Icon(
               Icons.account_balance_rounded,
-              size: Responsive.iconSize(36),
+              size: Responsive.iconSize(isSmall ? 28 : 36),
               color: NeoMiraiColors.gold,
             ),
           ),
@@ -391,18 +435,20 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
   }
 
   Widget _buildStatsSection(BuildContext context) {
+    final bool isSmall = context.isSmallPhone;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Statistik Pengajuan',
           style: TextStyle(
-            fontSize: Responsive.fontSize(14),
+            fontSize: Responsive.fontSize(isSmall ? 12 : 14),
             fontWeight: FontWeight.bold,
             color: NeoMiraiColors.ink,
           ),
         ),
-        SizedBox(height: Responsive.spacing(12)),
+        SizedBox(height: Responsive.spacing(8)),
 
         if (_isLoadingStats)
           _buildLoadingStats()
@@ -417,9 +463,9 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
       crossAxisCount: context.isTablet ? 5 : 3,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: Responsive.spacing(10),
-      crossAxisSpacing: Responsive.spacing(10),
-      childAspectRatio: context.isTablet ? 1.3 : 1.1,
+      mainAxisSpacing: Responsive.spacing(8),
+      crossAxisSpacing: Responsive.spacing(8),
+      childAspectRatio: context.isTablet ? 1.3 : (context.isLandscape ? 1.2 : 1.1),
       children: List.generate(5, (index) => _buildStatCard(
         label: '...',
         value: '0',
@@ -443,9 +489,9 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
       crossAxisCount: context.isTablet ? 5 : (context.isLandscape ? 5 : 3),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: Responsive.spacing(10),
-      crossAxisSpacing: Responsive.spacing(10),
-      childAspectRatio: context.isTablet ? 1.3 : (context.isLandscape ? 1.2 : 1.1),
+      mainAxisSpacing: Responsive.spacing(8),
+      crossAxisSpacing: Responsive.spacing(8),
+      childAspectRatio: context.isTablet ? 1.2 : (context.isLandscape ? 1.0 : 0.95),
       children: statsData.asMap().entries.map((entry) {
         final data = entry.value;
         return _buildStatCard(
@@ -468,52 +514,62 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
     required Color color,
     bool isLoading = false,
   }) {
+    final bool isSmall = context.isSmallPhone;
+    final double padding = isSmall ? 6 : 10;
+    final double iconSize = isSmall ? 14 : 18;
+    final double valueSize = isSmall ? 16 : 18;
+    final double labelSize = isSmall ? 8 : 9;
+
     return Container(
-      padding: EdgeInsets.all(Responsive.spacing(12)),
+      padding: EdgeInsets.all(padding),
       decoration: BoxDecoration(
         color: NeoMiraiColors.rice,
-        borderRadius: BorderRadius.circular(Responsive.radius(16)),
+        borderRadius: BorderRadius.circular(Responsive.radius(isSmall ? 10 : 14)),
         border: Border.all(
           color: NeoMiraiColors.line.withValues(alpha: 0.5),
         ),
         boxShadow: [
           BoxShadow(
             color: NeoMiraiColors.ink.withValues(alpha: 0.03),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: EdgeInsets.all(Responsive.radius(8)),
+            padding: EdgeInsets.all(isSmall ? 4 : 6),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(Responsive.radius(10)),
+              borderRadius: BorderRadius.circular(Responsive.radius(6)),
             ),
             child: Icon(
               icon,
-              size: Responsive.iconSize(20),
+              size: Responsive.iconSize(iconSize),
               color: color,
             ),
           ),
-          SizedBox(height: Responsive.spacing(8)),
+          SizedBox(height: Responsive.spacing(isSmall ? 2 : 4)),
           Text(
             value,
             style: TextStyle(
-              fontSize: Responsive.fontSize(20),
+              fontSize: Responsive.fontSize(valueSize),
               fontWeight: FontWeight.bold,
               color: NeoMiraiColors.ink,
             ),
           ),
+          SizedBox(height: 1),
           Text(
             label,
             style: TextStyle(
-              fontSize: Responsive.fontSize(10),
+              fontSize: Responsive.fontSize(labelSize),
               color: NeoMiraiColors.inkSoft,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -527,50 +583,98 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
         Text(
           'Aksi Cepat',
           style: TextStyle(
-            fontSize: Responsive.fontSize(14),
+            fontSize: Responsive.fontSize(13),
             fontWeight: FontWeight.bold,
             color: NeoMiraiColors.ink,
           ),
         ),
-        SizedBox(height: Responsive.spacing(12)),
+        SizedBox(height: Responsive.spacing(10)),
 
+        // First row: Ajukan Layanan & Pengajuan Saya (bigger cards)
         Row(
           children: [
             Expanded(
-              child: _buildActionCard(
-                icon: Icons.add_circle_outline_rounded,
-                label: 'Ajukan\nLayanan',
-                color: NeoMiraiColors.gold,
+              flex: 3,
+              child: _buildActionCardV2(
+                icon: Icons.add_circle_rounded,
+                label: 'Ajukan Layanan',
+                subtitle: 'Layanan baru',
                 gradient: NeoMiraiTheme.goldGradient,
+                iconBgColor: NeoMiraiColors.goldBright,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const LayananPage()),
                 ),
               ),
             ),
-            SizedBox(width: Responsive.spacing(12)),
+            SizedBox(width: Responsive.spacing(10)),
             Expanded(
-              child: _buildActionCard(
+              flex: 3,
+              child: _buildActionCardV2(
                 icon: Icons.history_rounded,
-                label: 'Pengajuan\nSaya',
-                color: NeoMiraiColors.info,
+                label: 'Pengajuan Saya',
+                subtitle: 'Lacak status',
                 gradient: NeoMiraiTheme.nightGradient,
+                iconBgColor: NeoMiraiColors.night,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const PengajuanPage()),
                 ),
               ),
             ),
-            SizedBox(width: Responsive.spacing(12)),
+          ],
+        ),
+
+        SizedBox(height: Responsive.spacing(10)),
+
+        // Second row: Presensi, Kegiatan, Info (smaller cards)
+        Row(
+          children: [
             Expanded(
-              child: _buildActionCard(
-                icon: Icons.help_outline_rounded,
-                label: 'Panduan\nPenggunaan',
-                color: NeoMiraiColors.ink,
+              child: _buildActionCardSmall(
+                icon: Icons.fingerprint_rounded,
+                label: 'Presensi',
                 gradient: LinearGradient(
-                  colors: [NeoMiraiColors.ash, NeoMiraiColors.line],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    NeoMiraiColors.success,
+                    NeoMiraiColors.success.withValues(alpha: 0.85),
+                  ],
                 ),
-                onTap: () => _showGuideDialog(context),
+                onTap: () => _showComingSoon(context, 'Presensi'),
+              ),
+            ),
+            SizedBox(width: Responsive.spacing(8)),
+            Expanded(
+              child: _buildActionCardSmall(
+                icon: Icons.event_rounded,
+                label: 'Kegiatan',
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    NeoMiraiColors.warning,
+                    NeoMiraiColors.warning.withValues(alpha: 0.85),
+                  ],
+                ),
+                onTap: () => _showComingSoon(context, 'Kegiatan'),
+              ),
+            ),
+            SizedBox(width: Responsive.spacing(8)),
+            Expanded(
+              child: _buildActionCardSmall(
+                icon: Icons.info_rounded,
+                label: 'Info',
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    NeoMiraiColors.info,
+                    NeoMiraiColors.info.withValues(alpha: 0.85),
+                  ],
+                ),
+                onTap: () => _showInfoDialog(context),
               ),
             ),
           ],
@@ -579,49 +683,257 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
     );
   }
 
-  Widget _buildActionCard({
+  /// Large action card for main actions
+  Widget _buildActionCardV2({
     required IconData icon,
     required String label,
-    required Color color,
+    required String subtitle,
     required LinearGradient gradient,
+    required Color iconBgColor,
     required VoidCallback onTap,
   }) {
+    final bool isSmall = context.isSmallPhone;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(Responsive.spacing(14)),
+        padding: EdgeInsets.all(Responsive.spacing(isSmall ? 12 : 16)),
         decoration: BoxDecoration(
           gradient: gradient,
-          borderRadius: BorderRadius.circular(Responsive.radius(16)),
+          borderRadius: BorderRadius.circular(Responsive.radius(isSmall ? 14 : 18)),
           boxShadow: [
             BoxShadow(
-              color: color.withValues(alpha: 0.3),
-              blurRadius: 10,
+              color: gradient.colors.first.withValues(alpha: 0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(Responsive.radius(isSmall ? 10 : 12)),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(Responsive.radius(12)),
+              ),
+              child: Icon(
+                icon,
+                size: Responsive.iconSize(isSmall ? 24 : 28),
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: Responsive.spacing(isSmall ? 10 : 14)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(isSmall ? 12 : 14),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(isSmall ? 9 : 10),
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: Responsive.iconSize(14),
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Small action card for secondary actions
+  Widget _buildActionCardSmall({
+    required IconData icon,
+    required String label,
+    required LinearGradient gradient,
+    required VoidCallback onTap,
+  }) {
+    final bool isSmall = context.isSmallPhone;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: Responsive.spacing(isSmall ? 12 : 14),
+          horizontal: Responsive.spacing(isSmall ? 6 : 8),
+        ),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(Responsive.radius(isSmall ? 12 : 14)),
+          boxShadow: [
+            BoxShadow(
+              color: gradient.colors.first.withValues(alpha: 0.3),
+              blurRadius: 8,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: Responsive.iconSize(28),
-              color: NeoMiraiColors.rice,
+            Container(
+              padding: EdgeInsets.all(Responsive.radius(isSmall ? 8 : 10)),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: Responsive.iconSize(isSmall ? 22 : 26),
+                color: Colors.white,
+              ),
             ),
-            SizedBox(height: Responsive.spacing(8)),
+            SizedBox(height: Responsive.spacing(isSmall ? 6 : 8)),
             Text(
               label,
-              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: Responsive.fontSize(11),
+                fontSize: Responsive.fontSize(isSmall ? 9 : 10),
                 fontWeight: FontWeight.w600,
-                color: NeoMiraiColors.rice,
-                height: 1.3,
+                color: Colors.white,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.construction_rounded, color: Colors.white),
+            SizedBox(width: Responsive.spacing(10)),
+            Text('$feature sedang dalam pengembangan'),
+          ],
+        ),
+        backgroundColor: NeoMiraiColors.info,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Responsive.radius(12)),
+        ),
+      ),
+    );
+  }
+
+  void _showInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Responsive.radius(20)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: NeoMiraiColors.gold),
+            SizedBox(width: Responsive.spacing(10)),
+            const Text('Informasi'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoItem(
+              icon: Icons.apps_rounded,
+              title: 'SILATAR V2',
+              desc: 'Versi 2.0.0',
+            ),
+            SizedBox(height: Responsive.spacing(12)),
+            _buildInfoItem(
+              icon: Icons.business_rounded,
+              title: 'Kementerian Agama',
+              desc: 'Kabupaten Tanah Datar',
+            ),
+            SizedBox(height: Responsive.spacing(12)),
+            _buildInfoItem(
+              icon: Icons.help_outline_rounded,
+              title: 'Bantuan',
+              desc: 'Hubungi admin untuk bantuan',
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: NeoMiraiColors.gold,
+              foregroundColor: NeoMiraiColors.rice,
+            ),
+            child: const Text('Tutup'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(Responsive.radius(8)),
+          decoration: BoxDecoration(
+            color: NeoMiraiColors.gold.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(Responsive.radius(10)),
+          ),
+          child: Icon(
+            icon,
+            size: Responsive.iconSize(20),
+            color: NeoMiraiColors.gold,
+          ),
+        ),
+        SizedBox(width: Responsive.spacing(12)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: Responsive.fontSize(12),
+                ),
+              ),
+              Text(
+                desc,
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(11),
+                  color: NeoMiraiColors.inkSoft,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -714,6 +1026,8 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
   }
 
   Widget _buildBottomNav(BuildContext context) {
+    final bool isSmall = context.isSmallPhone;
+
     return Container(
       decoration: BoxDecoration(
         color: NeoMiraiColors.rice,
@@ -728,43 +1042,48 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
       child: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: Responsive.spacing(16),
-            vertical: Responsive.spacing(8),
+            horizontal: Responsive.spacing(isSmall ? 6 : 12),
+            vertical: Responsive.spacing(isSmall ? 6 : 8),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                icon: Icons.home_rounded,
-                label: 'Beranda',
-                isActive: true,
-                onTap: () {},
-              ),
-              _buildNavItem(
-                icon: Icons.grid_view_rounded,
-                label: 'Layanan',
-                isActive: false,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LayananPage()),
+              Expanded(
+                child: _buildNavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Home',
+                  isActive: true,
+                  onTap: () {},
                 ),
               ),
-              _buildNavItem(
-                icon: Icons.description_rounded,
-                label: 'Pengajuan',
-                isActive: false,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const PengajuanPage()),
+              Expanded(
+                child: _buildNavItem(
+                  icon: Icons.grid_view_rounded,
+                  label: 'Layanan',
+                  isActive: false,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LayananPage()),
+                  ),
                 ),
               ),
-              _buildNavItem(
-                icon: Icons.person_outline_rounded,
-                label: 'Profil',
-                isActive: false,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+              Expanded(
+                child: _buildNavItem(
+                  icon: Icons.history_rounded,
+                  label: 'Riwayat Presensi',
+                  isActive: false,
+                  onTap: () => _showComingSoon(context, 'Riwayat Presensi'),
+                ),
+              ),
+              Expanded(
+                child: _buildNavItem(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Profil',
+                  isActive: false,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProfilePage()),
+                  ),
                 ),
               ),
             ],
@@ -780,18 +1099,20 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
     required bool isActive,
     required VoidCallback onTap,
   }) {
+    final bool isSmall = context.isSmallPhone;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: Responsive.spacing(14),
-          vertical: Responsive.spacing(8),
+          horizontal: Responsive.spacing(isSmall ? 6 : 10),
+          vertical: Responsive.spacing(isSmall ? 6 : 8),
         ),
         decoration: isActive
             ? BoxDecoration(
                 gradient: NeoMiraiTheme.goldGradient,
-                borderRadius: BorderRadius.circular(Responsive.radius(14)),
+                borderRadius: BorderRadius.circular(Responsive.radius(isSmall ? 10 : 14)),
               )
             : null,
         child: Column(
@@ -799,17 +1120,19 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
           children: [
             Icon(
               icon,
-              size: Responsive.iconSize(22),
+              size: Responsive.iconSize(isSmall ? 20 : 22),
               color: isActive ? NeoMiraiColors.rice : NeoMiraiColors.inkSoft,
             ),
-            SizedBox(height: Responsive.spacing(4)),
+            SizedBox(height: Responsive.spacing(2)),
             Text(
               label,
               style: TextStyle(
-                fontSize: Responsive.fontSize(10),
+                fontSize: Responsive.fontSize(isSmall ? 8 : 10),
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                 color: isActive ? NeoMiraiColors.rice : NeoMiraiColors.inkSoft,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -850,111 +1173,6 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
               foregroundColor: NeoMiraiColors.rice,
             ),
             child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showGuideDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Responsive.radius(20)),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.help_outline_rounded, color: NeoMiraiColors.gold),
-            SizedBox(width: Responsive.spacing(10)),
-            const Text('Panduan Penggunaan'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildGuideItem(
-                icon: Icons.add_circle_outline,
-                title: '1. Ajukan Layanan',
-                desc: 'Pilih layanan yang dibutuhkan dan lengkapi persyaratan',
-              ),
-              _buildGuideItem(
-                icon: Icons.description_outlined,
-                title: '2. Upload Berkas',
-                desc: 'Siapkan dan upload dokumen yang diperlukan',
-              ),
-              _buildGuideItem(
-                icon: Icons.notifications_outlined,
-                title: '3. Pantau Status',
-                desc: 'Lacak status pengajuan Anda secara realtime',
-              ),
-              _buildGuideItem(
-                icon: Icons.check_circle_outline,
-                title: '4. Ambil Hasil',
-                desc: 'Ambil hasil layanan di kantor terkait',
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: NeoMiraiColors.gold,
-              foregroundColor: NeoMiraiColors.rice,
-            ),
-            child: const Text('Mengerti'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGuideItem({
-    required IconData icon,
-    required String title,
-    required String desc,
-  }) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: Responsive.spacing(12)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: EdgeInsets.all(Responsive.radius(8)),
-            decoration: BoxDecoration(
-              color: NeoMiraiColors.gold.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(Responsive.radius(10)),
-            ),
-            child: Icon(
-              icon,
-              size: Responsive.iconSize(18),
-              color: NeoMiraiColors.gold,
-            ),
-          ),
-          SizedBox(width: Responsive.spacing(12)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: Responsive.fontSize(12),
-                  ),
-                ),
-                Text(
-                  desc,
-                  style: TextStyle(
-                    fontSize: Responsive.fontSize(11),
-                    color: NeoMiraiColors.inkSoft,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),

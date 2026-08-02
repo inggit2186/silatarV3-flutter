@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'user_data';
+  static const String _rememberMeKey = 'remember_me';
 
   late final SharedPreferences _prefs;
 
@@ -28,25 +30,29 @@ class StorageService {
     await _prefs.remove(_tokenKey);
   }
 
+  // Remember me management
+  Future<void> setRememberMe(bool value) async {
+    await _prefs.setBool(_rememberMeKey, value);
+  }
+
+  Future<bool> getRememberMe() async {
+    return _prefs.getBool(_rememberMeKey) ?? false;
+  }
+
   // User data management
   Future<void> setUser(Map<String, dynamic> user) async {
-    await _prefs.setString(_userKey, user.toString());
+    await _prefs.setString(_userKey, jsonEncode(user));
   }
 
   Future<Map<String, dynamic>?> getUser() async {
     final userStr = _prefs.getString(_userKey);
     if (userStr != null) {
       try {
-        return _parseUser(userStr);
+        return jsonDecode(userStr) as Map<String, dynamic>;
       } catch (e) {
         return null;
       }
     }
-    return null;
-  }
-
-  Map<String, dynamic>? _parseUser(String userStr) {
-    // Simple parsing - in real app use jsonEncode/jsonDecode
     return null;
   }
 
@@ -56,11 +62,21 @@ class StorageService {
 
   // Clear all data (logout)
   Future<void> clearAll() async {
+    await _prefs.remove(_tokenKey);
+    await _prefs.remove(_userKey);
+    // Keep remember me if user wants to stay logged in
+  }
+
+  // Full logout (clear everything including remember me)
+  Future<void> fullLogout() async {
     await _prefs.clear();
   }
 
   // Check if user is logged in
   Future<bool> isLoggedIn() async {
+    final rememberMe = await getRememberMe();
+    if (!rememberMe) return false;
+
     final token = await getToken();
     return token != null && token.isNotEmpty;
   }

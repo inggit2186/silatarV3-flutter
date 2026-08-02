@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/layanan_model.dart';
+import 'storage_service.dart';
 
 /// Base URL untuk API
 ///
@@ -84,6 +85,8 @@ class ApiService {
   void clearAuth() {
     _token = null;
     _userId = null;
+    // Clear storage on logout
+    StorageService().fullLogout();
   }
 
   /// Get headers with auth token
@@ -135,6 +138,8 @@ class ApiService {
         final token = body['token'] ?? body['access_token'] ?? body['data']?['token'];
         if (token != null) {
           setToken(token.toString());
+          // Save token to storage
+          StorageService().setToken(token.toString());
         }
 
         // Extract user data

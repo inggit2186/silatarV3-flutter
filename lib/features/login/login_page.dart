@@ -4,6 +4,7 @@ import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/neo_components.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/storage_service.dart';
 import '../../core/models/user_model.dart';
 import '../dashboard/dashboard_page.dart';
 
@@ -710,6 +711,12 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           if (response.success && response.data != null) {
             // Login success
             User user = response.data!;
+
+            // Save remember me preference and user data
+            if (_rememberMe) {
+              await StorageService().setRememberMe(true);
+              await StorageService().setUser(user.toJson());
+            }
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

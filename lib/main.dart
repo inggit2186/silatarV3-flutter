@@ -5,7 +5,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'core/theme/neo_mirai_theme.dart';
 import 'core/utils/responsive.dart';
 import 'core/services/storage_service.dart';
+import 'core/models/user_model.dart';
 import 'features/welcome/welcome_page.dart';
+import 'features/dashboard/dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +57,35 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _navigateToWelcome() async {
     await Future.delayed(const Duration(milliseconds: 2500));
+
+    if (!mounted) return;
+
+    // Check if user is logged in (remember me)
+    final isLoggedIn = await StorageService().isLoggedIn();
+
+    if (isLoggedIn) {
+      // Try to get saved user data
+      final userData = await StorageService().getUser();
+
+      if (userData != null && mounted) {
+        // Auto login - navigate to Dashboard
+        final user = User.fromJson(userData);
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                DashboardPage(user: user),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          ),
+        );
+        return;
+      }
+    }
+
+    // Normal flow - go to Welcome
     if (mounted) {
       Navigator.pushReplacement(
         context,
@@ -62,10 +93,7 @@ class _SplashScreenState extends State<SplashScreen> {
           pageBuilder: (context, animation, secondaryAnimation) =>
               const WelcomePage(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
+            return FadeTransition(opacity: animation, child: child);
           },
           transitionDuration: const Duration(milliseconds: 600),
         ),
