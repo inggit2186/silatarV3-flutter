@@ -4,10 +4,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import 'core/theme/neo_mirai_theme.dart';
 import 'core/utils/responsive.dart';
+import 'core/services/storage_service.dart';
 import 'features/welcome/welcome_page.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize storage service
+  await StorageService().init();
 
   // Set status bar style - matching web theme
   SystemChrome.setSystemUIOverlayStyle(

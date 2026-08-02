@@ -471,13 +471,16 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               label: 'NIP / Email',
               hint: '1978xx atau nama@email.com',
               prefixIcon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
+              keyboardType: TextInputType.text,
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Email tidak boleh kosong';
+                  return 'NIP atau Email tidak boleh kosong';
                 }
-                if (!value.contains('@')) {
-                  return 'Email tidak valid';
+                // Accept NIP (digits only) or email (contains @)
+                final isNip = RegExp(r'^[0-9]+$').hasMatch(value);
+                final isEmail = value.contains('@') && value.contains('.');
+                if (!isNip && !isEmail) {
+                  return 'Format NIP atau Email tidak valid';
                 }
                 return null;
               },

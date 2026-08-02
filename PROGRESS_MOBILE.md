@@ -64,6 +64,42 @@ SILATAR V2 Mobile App adalah aplikasi Flutter untuk platform Android/iOS yang di
 - [x] Successfully build debug APK
 - [x] Test app running on device
 
+### Phase 8: Backend API Structure ✅ (BARU)
+
+- [x] Buat routes/api.php dengan struktur API lengkap
+- [x] Buat BaseApiController dengan response helpers
+- [x] Buat AuthController (login, register, logout, profile)
+- [x] Buat LayananController (index, show, syarat, units)
+- [x] Buat PengajuanController (CRUD, upload, tracking)
+- [x] Buat UserController (profile, updateProfile, updatePhoto)
+- [x] Update bootstrap/app.php untuk register API routes
+
+### Phase 9: Flutter API Service Layer ✅ (BARU)
+
+- [x] Install dio package di pubspec.yaml
+- [x] Buat StorageService untuk token management
+- [x] Buat ApiClient dengan Dio interceptors
+- [x] Buat AuthService (login, register, logout, profile)
+- [x] Buat LayananService (getLayanan, detail, syarat, units)
+- [x] Buat PengajuanService (CRUD, upload, tracking)
+- [x] Update main.dart untuk init StorageService
+
+### Phase 10: Backend Sanctum & API Fix ✅ (BARU)
+
+- [x] Install Laravel Sanctum untuk authentication
+- [x] Setup User model dengan HasApiTokens trait
+- [x] Fix login API support email & NIP (nomor_induk)
+- [x] Fix personal_access_tokens table (add expires_at column)
+- [x] Update API routes dengan auth:sanctum middleware
+- [x] Fix Login validator accept NIP/email format
+
+### Phase 11: USB Debugging Setup ✅ (BARU)
+
+- [x] Configure base URL untuk USB debugging
+- [x] Support adb reverse (127.0.0.1:8000)
+- [x] Support WiFi IP address connection
+- [x] Test API endpoints working
+
 ---
 
 ## Theme - NEO MIRAI (Matching Web SILATAR V2)
@@ -183,24 +219,42 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 
 ---
 
-## Files yang Dimodifikasi/Ditambahkan
+## Files yang Dimodifikasi/Ditambahkan (Backend)
 
 | File | Perubahan |
-|------|--------|
-| `lib/main.dart` | Entry point dengan splash screen (theme baru) |
+|------|-----------|
+| `routes/api.php` | **BARU** - API routes |
+| `app/Http/Controllers/Api/BaseApiController.php` | **BARU** - Base controller untuk API |
+| `app/Http/Controllers/Api/AuthController.php` | **BARU** - Auth endpoints |
+| `app/Http/Controllers/Api/LayananController.php` | **BARU** - Layanan endpoints |
+| `app/Http/Controllers/Api/PengajuanController.php` | **BARU** - Pengajuan endpoints |
+| `app/Http/Controllers/Api/UserController.php` | **BARU** - User profile endpoints |
+| `bootstrap/app.php` | Update - register API routes |
+
+## Files yang Dimodifikasi/Ditambahkan (Flutter)
+
+| File | Perubahan |
+|------|-----------|
+| `lib/main.dart` | Entry point dengan splash screen + StorageService init |
 | `lib/core/theme/neo_mirai_theme.dart` | **BARU** - Theme sesuai web SILATAR V2 |
 | `lib/core/theme/app_theme.dart` | Theme original |
 | `lib/core/utils/responsive.dart` | Responsive helper utilities |
 | `lib/core/widgets/neo_components.dart` | Widgets dengan theme baru |
+| `lib/core/services/storage_service.dart` | **BARU** - Token management |
+| `lib/core/services/api_client.dart` | **BARU** - Dio HTTP client |
+| `lib/core/services/auth_service.dart` | **BARU** - Auth API service |
+| `lib/core/services/layanan_service.dart` | **BARU** - Layanan API service |
+| `lib/core/services/pengajuan_service.dart` | **BARU** - Pengajuan API service |
 | `lib/features/welcome/welcome_page.dart` | Welcome page (theme baru) |
 | `lib/features/login/login_page.dart` | Login page (theme baru) |
 | `assets/images/*` | **BARU** - Assets dari web project |
+| `pubspec.yaml` | Update - add dio dependency |
 
 ---
 
 ## TODO - Next Steps
 
-### Priority 1: Core Pages
+### Priority 1: Core Pages (Flutter UI)
 
 - [ ] **Home Page** - Dashboard utama dengan bottom navigation
 - [ ] **Katalog Layanan** - Daftar layanan yang tersedia
@@ -209,13 +263,14 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 - [ ] **Tracking Pengajuan** - Lacak status pengajuan
 - [ ] **Profile Page** - Profil user dan settings
 
-### Priority 2: API Integration
+### Priority 2: Integration (UI + API)
 
-- [ ] Buat API service layer untuk komunikasi dengan backend Laravel
-- [ ] Implementasi authentication (login/logout)
-- [ ] Fetch layanan dari database
-- [ ] Submit pengajuan ke server
-- [ ] Handle response dan error states
+- [ ] Connect Login page dengan AuthService
+- [ ] Connect Home page dengan API data
+- [ ] Connect Katalog Layanan dengan LayananService
+- [ ] Connect Pengajuan page dengan PengajuanService
+- [ ] Implementasi state management (Provider)
+- [ ] Test API integration
 
 ### Priority 3: Additional Features
 
@@ -229,51 +284,70 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 ## Roadmap
 
 ```
-Phase 1: Setup & Basic UI     ✅ DONE
-├── Project setup
-├── Theme system
+Phase 1-7: Flutter UI      ✅ DONE
+├── Setup, Theme, Responsive
+├── NEO MIRAI theme
 ├── Splash, Welcome, Login
-└── Device deployment
+└── Build & Test
 
-Phase 2: Responsive Design   ✅ DONE
-├── Responsive helper utility
-├── Portrait & landscape support
-├── Small phone, phone, tablet support
-└── Fix overflow issues
+Phase 8: Backend API       ✅ DONE
+├── API routes structure
+├── Auth endpoints
+├── Layanan endpoints
+├── Pengajuan endpoints
+└── User endpoints
 
-Phase 3: Web Theme Matching   ✅ DONE (BARU)
-├── NEO MIRAI theme colors
-├── Copy assets from web
-├── Update all pages with new theme
-└── Chakra Petch font integration
+Phase 9: Flutter API Svc  ✅ DONE
+├── Dio HTTP client
+├── StorageService
+├── AuthService
+├── LayananService
+└── PengajuanService
 
-Phase 4: Core Features        📋 NEXT
+Phase 10: Sanctum Auth    ✅ DONE
+├── Laravel Sanctum setup
+├── User model HasApiTokens
+├── API middleware
+└── Login email/NIP fix
+
+Phase 11: Core Features     📋 NEXT
 ├── Home page + navigation
 ├── Katalog layanan
 ├── Form pengajuan
 └── Tracking pengajuan
 
-Phase 5: API Integration      📋 PLANNED
-├── Auth service
-├── Data services
-└── State management
-
-Phase 6: Advanced Features    📋 PLANNED
+Phase 12: Advanced          📋 PLANNED
 ├── Push notifications
 ├── Offline mode
 └── File upload
-
-Phase 7: Polish & Release     📋 PLANNED
-├── Testing
-├── Performance tuning
-└── Release build
 ```
 
 ---
 
 ## Changelog
 
-### 2026-08-02 - Session 3
+### 2026-08-02 - Session 5
+
+- ✅ Install Laravel Sanctum untuk mobile API auth
+- ✅ Setup User model dengan HasApiTokens trait
+- ✅ Fix login API support email & NIP (nomor_induk) - samakan dengan web login
+- ✅ Fix personal_access_tokens table (add expires_at column)
+- ✅ Fix Login validator accept NIP (digits) atau email (@)
+- ✅ Update API endpoints di ApiService Flutter
+- ✅ Configure base URL untuk USB debugging (127.0.0.1:8000)
+- ✅ Test API login endpoint working
+
+### 2026-08-02 - Session 4 (Lanjutan)
+
+- ✅ Install dio package di pubspec.yaml
+- ✅ Buat StorageService untuk token & user data management
+- ✅ Buat ApiClient dengan Dio interceptors (auth header, error handling)
+- ✅ Buat AuthService (login, register, logout, profile, changePassword)
+- ✅ Buat LayananService (getLayanan, getDetail, getSyarat, getUnits)
+- ✅ Buat PengajuanService (CRUD, upload, tracking)
+- ✅ Update main.dart untuk init StorageService
+
+### 2026-08-02 - Session 4
 
 - ✅ Buat NeoMiraiColors dengan warna sesuai CSS web
 - ✅ Buat NeoMiraiTheme dengan Material 3
@@ -313,6 +387,88 @@ Phase 7: Polish & Release     📋 PLANNED
 3. **Theme**: NEO MIRAI theme dengan warna Gold (#B08D57) sesuai web SILATAR V2
 4. **Font**: Chakra Petch untuk headings/buttons, Poppins untuk body text
 5. **Assets**: 80+ ikon status dan background images dari web project
+6. **Backend API**: Laravel API sudah dibuat di `d:\work\SourceCode\silatarV2`
+
+---
+
+## API Documentation (Backend Laravel)
+
+### Base URL
+```
+http://localhost:8000/api
+```
+
+### Authentication
+API menggunakan **Laravel Sanctum** untuk authentication. Include token di header:
+```
+Authorization: Bearer {token}
+```
+
+### Public Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/login` | Login user |
+| POST | `/auth/register` | Register user baru |
+| POST | `/auth/forgot-password` | Request reset password |
+| GET | `/layanan` | Daftar layanan (paginated) |
+| GET | `/layanan/{id}` | Detail layanan |
+
+### Protected Endpoints (Auth Required)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/auth/me` | Get current user |
+| POST | `/auth/logout` | Logout |
+| PUT | `/auth/update-profile` | Update profile |
+| PUT | `/auth/change-password` | Ganti password |
+| GET | `/layanan/{id}/syarat` | Get persyaratan layanan |
+| GET | `/pengajuan` | Daftar pengajuan user |
+| POST | `/pengajuan` | Buat pengajuan baru |
+| GET | `/pengajuan/{id}` | Detail pengajuan |
+| PUT | `/pengajuan/{id}` | Update pengajuan |
+| DELETE | `/pengajuan/{id}` | Hapus pengajuan |
+| POST | `/pengajuan/{id}/upload` | Upload file |
+| GET | `/pengajuan/{id}/tracking` | Tracking history |
+| GET | `/user/profile` | Get profile |
+| PUT | `/user/profile` | Update profile |
+| PUT | `/user/profile/photo` | Update foto |
+| GET | `/units` | Daftar satuan kerja |
+
+### Response Format
+
+**Success:**
+```json
+{
+  "success": true,
+  "message": "Success message",
+  "data": { ... }
+}
+```
+
+**Error:**
+```json
+{
+  "success": false,
+  "message": "Error message",
+  "errors": { ... } // optional
+}
+```
+
+**Paginated:**
+```json
+{
+  "success": true,
+  "message": "...",
+  "data": [...],
+  "meta": {
+    "current_page": 1,
+    "last_page": 5,
+    "per_page": 12,
+    "total": 50
+  }
+}
+```
 
 ---
 

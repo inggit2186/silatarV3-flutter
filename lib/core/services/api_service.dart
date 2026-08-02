@@ -4,6 +4,15 @@ import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/layanan_model.dart';
 
+/// Base URL untuk API
+///
+/// Untuk USB debugging dengan adb reverse: gunakan http://127.0.0.1:8000/api
+/// Jalankan: adb reverse tcp:8000 tcp:8000
+///
+/// Untuk WiFi (device dan komputer satu jaringan): gunakan http://IP_KOMPUTER:8000/api
+/// Cek IP dengan: ipconfig (Windows)
+const _baseUrl = 'http://127.0.0.1:8000/api';
+
 /// API Response wrapper
 class ApiResponse<T> {
   final bool success;
@@ -111,10 +120,10 @@ class ApiService {
   Future<ApiResponse<User>> login(String nipOrEmail, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/login'),
+        Uri.parse('$_baseUrl/auth/login'),
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
         body: jsonEncode({
-          'login': nipOrEmail, // bisa NIP atau email
+          'login': nipOrEmail, // bisa email atau NIP (nomor_induk)
           'password': password,
         }),
       ).timeout(const Duration(seconds: 30));
@@ -170,7 +179,7 @@ class ApiService {
   Future<ApiResponse<bool>> logout() async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/logout'),
+        Uri.parse('$_baseUrl/auth/logout'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -198,7 +207,7 @@ class ApiService {
   Future<ApiResponse<User>> getProfile() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/user'),
+        Uri.parse('$_baseUrl/auth/me'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -242,7 +251,7 @@ class ApiService {
       if (unitId != null) queryParams['unit_id'] = unitId.toString();
       if (isActive != null) queryParams['is_active'] = isActive ? '1' : '0';
 
-      final uri = Uri.parse('http://10.0.2.2:8000/api/layanan')
+      final uri = Uri.parse('$_baseUrl/layanan')
           .replace(queryParameters: queryParams);
 
       final response = await http.get(uri, headers: _headers)
@@ -273,7 +282,7 @@ class ApiService {
   Future<ApiResponse<Layanan>> getLayananDetail(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/layanan/$id'),
+        Uri.parse('$_baseUrl/layanan/$id'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -299,7 +308,7 @@ class ApiService {
   Future<ApiResponse<List<Syarat>>> getSyaratList(int layananId) async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/layanan/$layananId/syarat'),
+        Uri.parse('$_baseUrl/layanan/$layananId/syarat'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -337,7 +346,7 @@ class ApiService {
       };
       if (status != null && status.isNotEmpty) queryParams['status'] = status;
 
-      final uri = Uri.parse('http://10.0.2.2:8000/api/pengajuan')
+      final uri = Uri.parse('$_baseUrl/pengajuan')
           .replace(queryParameters: queryParams);
 
       final response = await http.get(uri, headers: _headers)
@@ -369,7 +378,7 @@ class ApiService {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://10.0.2.2:8000/api/pengajuan'),
+        Uri.parse('$_baseUrl/pengajuan'),
       );
 
       request.headers.addAll(_headers);
@@ -427,7 +436,7 @@ class ApiService {
   Future<ApiResponse<Map<String, dynamic>>> getPengajuanDetail(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/pengajuan/$id'),
+        Uri.parse('$_baseUrl/pengajuan/$id'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -452,7 +461,7 @@ class ApiService {
   Future<ApiResponse<bool>> cancelPengajuan(int id) async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/pengajuan/$id/cancel'),
+        Uri.parse('$_baseUrl/pengajuan/$id/cancel'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 
@@ -479,7 +488,7 @@ class ApiService {
   Future<ApiResponse<Map<String, dynamic>>> getDashboardStats() async {
     try {
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/dashboard/stats'),
+        Uri.parse('$_baseUrl/dashboard/stats'),
         headers: _headers,
       ).timeout(const Duration(seconds: 30));
 

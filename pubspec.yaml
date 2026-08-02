@@ -20,6 +20,7 @@ dependencies:
   provider: ^6.1.2
 
   # HTTP & API
+  dio: ^5.4.0
   http: ^1.2.2
 
   # Local Storage
