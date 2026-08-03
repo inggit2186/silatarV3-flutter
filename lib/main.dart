@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 
 import 'core/theme/neo_mirai_theme.dart';
 import 'core/utils/responsive.dart';
 import 'core/services/storage_service.dart';
+import 'core/services/api_service.dart';
 import 'core/models/user_model.dart';
+import 'core/providers/user_provider.dart';
 import 'features/welcome/welcome_page.dart';
-import 'features/dashboard/dashboard_page.dart';
+import 'features/main_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,11 +36,14 @@ class SILATARApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'SILATAR V2',
-      debugShowCheckedModeBanner: false,
-      theme: NeoMiraiTheme.lightTheme,
-      home: const SplashScreen(),
+    return ChangeNotifierProvider(
+      create: (_) => UserProvider(),
+      child: MaterialApp(
+        title: 'SILATAR V2',
+        debugShowCheckedModeBanner: false,
+        theme: NeoMiraiTheme.lightTheme,
+        home: const SplashScreen(),
+      ),
     );
   }
 }
@@ -64,17 +71,42 @@ class _SplashScreenState extends State<SplashScreen> {
     final isLoggedIn = await StorageService().isLoggedIn();
 
     if (isLoggedIn) {
-      // Try to get saved user data
-      final userData = await StorageService().getUser();
+      // Load token into ApiService
+      final token = await StorageService().getToken();
+      if (token != null) {
+        ApiService.instance.setToken(token);
+      }
 
-      if (userData != null && mounted) {
-        // Auto login - navigate to Dashboard
-        final user = User.fromJson(userData);
+      // Fetch fresh user data from API
+      final response = await ApiService.instance.getProfile();
+
+      if (response.success && response.data != null && mounted) {
+        final user = response.data!;
+        context.read<UserProvider>().setUser(user);
+
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                DashboardPage(user: user),
+            pageBuilder: (context, animation, secondaryAnimation) => const MainShell(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 600),
+          ),
+        );
+        return;
+      }
+
+      // API failed - use cached data
+      final userData = await StorageService().getUser();
+      if (userData != null && mounted) {
+        final user = User.fromJson(userData);
+        context.read<UserProvider>().setUser(user);
+
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const MainShell(),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
@@ -85,13 +117,12 @@ class _SplashScreenState extends State<SplashScreen> {
       }
     }
 
-    // Normal flow - go to Welcome
+    // Not logged in - go to Welcome
     if (mounted) {
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) =>
-              const WelcomePage(),
+          pageBuilder: (context, animation, secondaryAnimation) => const WelcomePage(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },

@@ -128,6 +128,20 @@ SILATAR V2 Mobile App adalah aplikasi Flutter untuk platform Android/iOS yang di
 - [x] Snackbar untuk menu coming soon
 - [x] Animasi fade-in dan slide pada cards
 
+### Phase 15: Presensi Feature ✅ (BARU)
+
+- [x] Buat PresensiController API (store, today, history, rekap)
+- [x] Buat KtdPresensi model
+- [x] Buat presensi_model.dart di Flutter
+- [x] Tambah presensi API endpoints ke ApiService
+- [x] Presensi page dengan GPS location tracking
+- [x] Map dengan FlutterMap untuk area presensi
+- [x] Status: MASUK, TERLAMBAT, PULANG, PULANG_CEPAT
+- [x] Selisih waktu format "X jam X menit X detik"
+- [x] Tampilkan status TERLAMBAT/PULANG_CEPAT di bawah "Tercatat"
+- [x] Timezone Asia/Jakarta
+- [x] Tanpa toleransi waktu
+
 ---
 
 ## Theme - NEO MIRAI (Matching Web SILATAR V2)
@@ -262,12 +276,14 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 
 | File | Perubahan |
 |------|-----------|
-| `routes/api.php` | API routes dengan auth:sanctum |
+| `routes/api.php` | API routes dengan auth:sanctum + presensi routes |
 | `app/Http/Controllers/Api/BaseApiController.php` | Base controller dengan response helpers |
 | `app/Http/Controllers/Api/AuthController.php` | Auth endpoints + pp field |
 | `app/Http/Controllers/Api/LayananController.php` | Layanan endpoints |
 | `app/Http/Controllers/Api/PengajuanController.php` | Pengajuan endpoints |
 | `app/Http/Controllers/Api/UserController.php` | User profile endpoints |
+| `app/Http/Controllers/Api/PresensiController.php` | Presensi endpoints (store, today, history, rekap) |
+| `app/Models/KtdPresensi.php` | Model presensi dengan user_nip |
 | `app/Models/User.php` | Update dengan HasApiTokens + pp field |
 | `bootstrap/app.php` | Register API routes |
 | `config/sanctum.php` | Sanctum configuration |
@@ -280,8 +296,9 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 |------|-----------|
 | `lib/main.dart` | Entry point + Splash Screen + Auto-login |
 | `lib/core/models/user_model.dart` | User model dengan pp, foto, type parsing |
-| `lib/core/services/storage_service.dart` | Remember me, JSON encode/decode |
-| `lib/core/services/api_service.dart` | Token storage, logout clear |
+| `lib/core/models/presensi_model.dart` | Model presensi (Presensi, PresensiJam, PresensiHariIni) |
+| `lib/core/services/storage_service.dart` | Remember me, JSON encode/decode, init guard |
+| `lib/core/services/api_service.dart` | Token storage, logout clear, presensi APIs |
 | `lib/core/theme/neo_mirai_theme.dart` | Theme sesuai web SILATAR V2 |
 | `lib/core/theme/app_theme.dart` | Theme original |
 | `lib/core/utils/responsive.dart` | Responsive helper utilities |
@@ -293,6 +310,7 @@ silatar_v2/ (Lokasi: C:\silatar_v2)
 | `lib/features/dashboard/dashboard_page.dart` | Dashboard dengan user photo, quick actions |
 | `lib/features/welcome/welcome_page.dart` | Welcome page |
 | `lib/features/login/login_page.dart` | Login page + remember me |
+| `lib/features/presensi/presensi_content.dart` | Presensi page dengan GPS, map, status |
 | `assets/images/*` | Assets dari web project |
 | `pubspec.yaml` | Dependencies (dio, etc) |
 
@@ -374,12 +392,20 @@ Phase 13: Menu Pelayanan ✅ DONE
 ├── Search bar
 └── Bottom nav
 
-Phase 14: Detail & Form    📋 NEXT
+Phase 14: Presensi Feature ✅ DONE
+├── PresensiController API
+├── GPS location tracking
+├── Map area presensi
+├── Status: MASUK/TERLAMBAT/PULANG/PULANG_CEPAT
+├── Selisih jam format "X jam X menit X detik"
+└── Tampilkan status di UI
+
+Phase 15: Detail & Form    📋 NEXT
 ├── Detail layanan
 ├── Form pengajuan
 └── Profile page
 
-Phase 15: Advanced        📋 PLANNED
+Phase 16: Advanced        📋 PLANNED
 ├── Push notifications
 ├── Offline mode
 └── File upload
@@ -388,6 +414,24 @@ Phase 15: Advanced        📋 PLANNED
 ---
 
 ## Changelog
+
+### 2026-08-04 - Session 8
+
+- ✅ Buat PresensiController API (store, today, history, rekap)
+- ✅ Buat KtdPresensi model
+- ✅ Tambah routes presensi di api.php
+- ✅ Buat presensi_model.dart (Presensi, PresensiJam, PresensiHariIni)
+- ✅ Tambah method simpanPresensi, getPresensiHariIni, getPresensiHistory ke ApiService
+- ✅ Update PresensiContent dengan GPS location tracking
+- ✅ Map dengan FlutterMap untuk area presensi
+- ✅ Status: MASUK, TERLAMBAT, PULANG, PULANG_CEPAT
+- ✅ Selisih waktu format "X jam X menit X detik" di database (detik)
+- ✅ Fix timezone Asia/Jakarta
+- ✅ Tanpa toleransi waktu presensi
+- ✅ Tampilkan status TERLAMBAT/PULANG_CEPAT di bawah "Tercatat"
+- ✅ Fix StorageService double init() causing splash stuck
+- ✅ Fix getProfile() API response parsing
+- ✅ Fix simpanPresensi() Authorization header
 
 ### 2026-08-04 - Session 7
 
@@ -523,6 +567,10 @@ Authorization: Bearer {token}
 | PUT | `/user/profile` | Update profile |
 | PUT | `/user/profile/photo` | Update foto |
 | GET | `/units` | Daftar satuan kerja |
+| POST | `/presensi` | Simpan presensi masuk/pulang |
+| GET | `/presensi/today` | Ambil presensi hari ini |
+| GET | `/presensi/history` | Riwayat presensi bulanan |
+| GET | `/presensi/rekap` | Rekap statistik bulanan |
 
 ### Response Format
 

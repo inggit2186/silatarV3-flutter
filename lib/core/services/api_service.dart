@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/layanan_model.dart';
+import '../models/presensi_model.dart';
 import 'storage_service.dart';
 
 /// Base URL untuk API
@@ -49,17 +50,24 @@ class ApiResponse<T> {
   }
 }
 
-/// API Service - Handles all HTTP requests to Laravel backend
+  /// API Service - Handles all HTTP requests to Laravel backend
 class ApiService {
   static ApiService? _instance;
-  String? _token;
-  String? _userId;
-
-  ApiService._();
-
   static ApiService get instance {
     _instance ??= ApiService._();
     return _instance!;
+  }
+
+  ApiService._();
+
+  String? _token;
+  String? _userId;
+
+  /// Load token from storage
+  Future<void> _loadTokenFromStorage() async {
+    if (_token == null || _token!.isEmpty) {
+      _token = await StorageService().getToken();
+    }
   }
 
   /// Set authentication token
@@ -211,6 +219,9 @@ class ApiService {
   /// Get current user profile
   Future<ApiResponse<User>> getProfile() async {
     try {
+      // Load token from storage if not loaded
+      await _loadTokenFromStorage();
+
       final response = await http.get(
         Uri.parse('$_baseUrl/auth/me'),
         headers: _headers,
@@ -219,7 +230,9 @@ class ApiService {
       final body = _parseBody(response.body);
 
       if (response.statusCode == 200) {
-        final userData = body['data'] ?? body;
+        // Response format: { data: { user: {...} } }
+        final data = body['data'];
+        final userData = data is Map && data.containsKey('user') ? data['user'] : data;
         return ApiResponse.success(User.fromJson(userData));
       } else if (response.statusCode == 401) {
         clearAuth();
@@ -504,6 +517,115 @@ class ApiService {
       } else {
         return ApiResponse.error(
           body['message'] ?? 'Gagal mengambil statistik',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  // ============ PRESENSI ============
+
+  /// Simpan presensi (masuk/pulang)
+  Future<ApiResponse<Presensi>> simpanPresensi({
+    required String jenis,
+    required double latitude,
+    required double longitude,
+    double? jarakMeter,
+    String? keterangan,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/presensi'),
+        headers: _headers,
+        body: jsonEncode({
+          'jenis': jenis,
+          'latitude': latitude,
+          'longitude': longitude,
+          'jarak_meter': jarakMeter,
+          'keterangan': keterangan,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = body['data'];
+        final presensi = data is Map && data.containsKey('presensi')
+            ? data['presensi']
+            : data;
+        return ApiResponse.success(
+          Presensi.fromJson(presensi),
+          message: body['message'],
+        );
+      } else if (response.statusCode == 400) {
+        return ApiResponse.error(
+          body['message'] ?? 'Presensi sudah dilakukan',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal menyimpan presensi',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Ambil presensi hari ini
+  Future<ApiResponse<PresensiHariIni>> getPresensiHariIni() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/presensi/today'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final data = body['data'];
+        return ApiResponse.success(PresensiHariIni.fromJson(data));
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil data presensi',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Ambil riwayat presensi
+  Future<ApiResponse<PresensiHistory>> getPresensiHistory({int? bulan, int? tahun}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (bulan != null) queryParams['bulan'] = bulan.toString();
+      if (tahun != null) queryParams['tahun'] = tahun.toString();
+
+      final uri = Uri.parse('$_baseUrl/presensi/history')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await http.get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final data = body['data'];
+        return ApiResponse.success(PresensiHistory.fromJson(data));
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil riwayat presensi',
           statusCode: response.statusCode,
         );
       }

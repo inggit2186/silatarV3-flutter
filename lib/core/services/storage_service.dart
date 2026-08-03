@@ -13,8 +13,12 @@ class StorageService {
   static final StorageService _instance = StorageService._();
   factory StorageService() => _instance;
 
+  bool _initialized = false;
+
   Future<void> init() async {
+    if (_initialized) return;
     _prefs = await SharedPreferences.getInstance();
+    _initialized = true;
   }
 
   // Token management

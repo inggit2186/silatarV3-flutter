@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/neo_components.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/models/user_model.dart';
-import '../dashboard/dashboard_page.dart';
+import '../../core/providers/user_provider.dart';
+import '../main_shell.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -737,14 +739,17 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               ),
             );
 
-            // Navigate to Dashboard
+            // Navigate to MainShell (Dashboard with persistent nav)
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
+                // Save user to global provider
+                context.read<UserProvider>().setUser(user);
+
                 Navigator.pushAndRemoveUntil(
                   context,
                   PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) =>
-                        DashboardPage(user: user),
+                        const MainShell(),
                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                       return FadeTransition(
                         opacity: animation,
