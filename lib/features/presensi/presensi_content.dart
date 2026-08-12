@@ -149,13 +149,17 @@ class _PresensiContentState extends State<PresensiContent> {
 
   // Check if already presensi today
   bool get _hasPresensiHariIni {
-    if (_isPresensiMasukTime && _checkInTime != null) {
-      return _isSameDay(_checkInTime!, DateTime.now());
+    // Cek apakah sudah ada presensi masuk atau pulang hari ini
+    final hasMasuk = _checkInTime != null && _isSameDay(_checkInTime!, DateTime.now());
+
+    // Untuk presensi masuk: hanya bisa 1x (belum ada masuk)
+    // Untuk presensi pulang: bisa update berkali-kali (ambil yang paling baru)
+    if (_isPresensiMasukTime) {
+      return hasMasuk;
+    } else {
+      // Presensi pulang: selalu bisa (update berkali-kali)
+      return false;
     }
-    if (!_isPresensiMasukTime && _checkOutTime != null) {
-      return _isSameDay(_checkOutTime!, DateTime.now());
-    }
-    return false;
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -790,12 +794,6 @@ class _PresensiContentState extends State<PresensiContent> {
   }
 
   Widget _buildPresensiCard() {
-    // Debug info
-    final hk = _hariKerja;
-    final dept = _department;
-    final today = DateTime.now().weekday;
-    final String debugInfo = 'DEBUG: dept=${dept?.nama ?? "null"}, hk=${hk?.id ?? "null"}, today=$today, isWorkDay=$_isWorkDay, loc=$_currentLocation, within=$_isWithinRadius';
-
     // Determine colors and state
     final bool isPresensiMasuk = _isPresensiMasukTime;
     final Color buttonColor = isPresensiMasuk ? NeoMiraiColors.success : NeoMiraiColors.info;
@@ -803,12 +801,20 @@ class _PresensiContentState extends State<PresensiContent> {
 
     // Determine subtitle
     String subtitle;
+    final hasPulangToday = _checkOutTime != null && _isSameDay(_checkOutTime!, DateTime.now());
+
     if (!_isWorkDay) {
       subtitle = 'Bukan hari kerja';
     } else if (_hasPresensiHariIni) {
-      subtitle = 'Presensi sudah dilakukan';
+      if (isPresensiMasuk) {
+        subtitle = 'Presensi masuk sudah dilakukan';
+      } else {
+        subtitle = 'Belum presensi masuk hari ini';
+      }
     } else if (!_isWithinRadius) {
       subtitle = 'Mendekati area presensi';
+    } else if (!isPresensiMasuk && hasPulangToday) {
+      subtitle = 'Update presensi pulang (ambil yang paling baru)';
     } else {
       subtitle = 'Tekan fingerprint untuk presensi';
     }
@@ -869,7 +875,7 @@ class _PresensiContentState extends State<PresensiContent> {
                   Icon(Icons.check_circle_rounded, size: Responsive.iconSize(18), color: NeoMiraiColors.success),
                   SizedBox(width: Responsive.spacing(8)),
                   Text(
-                    'Tercatat: ${_formatTime(savedTime)}',
+                    isPresensiMasuk ? 'Tercatat: ${_formatTime(savedTime)}' : 'Terakhir: ${_formatTime(savedTime)} (bisa update)',
                     style: TextStyle(fontSize: Responsive.fontSize(12), fontWeight: FontWeight.w600, color: NeoMiraiColors.success),
                   ),
                 ],
@@ -906,20 +912,6 @@ class _PresensiContentState extends State<PresensiContent> {
 
           // Disabled reason
           if (!isEnabled && !_hasPresensiHariIni) ...[
-            // Debug info
-            Container(
-              padding: EdgeInsets.all(Responsive.spacing(8)),
-              margin: EdgeInsets.only(bottom: Responsive.spacing(8)),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(Responsive.radius(8)),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Text(
-                debugInfo,
-                style: TextStyle(fontSize: 8, color: Colors.red.shade700, fontFamily: 'monospace'),
-              ),
-            ),
             Text(
               _getDisabledReason(),
               style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.error),
@@ -1203,20 +1195,40 @@ class _PresensiContentState extends State<PresensiContent> {
     } else {
       // Show error
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                SizedBox(width: Responsive.spacing(10)),
-                Expanded(child: Text(response.message ?? 'Gagal menyimpan presensi')),
-              ],
+        // Jika message mengandung "sudah dilakukan", treat sebagai success
+        final msg = response.message ?? 'Gagal menyimpan presensi';
+        if (msg.toLowerCase().contains('sudah dilakukan') || msg.toLowerCase().contains('sudah ada')) {
+          // Presensi sudah ada, update state
+          setState(() {
+            if (isMasuk) {
+              _checkInTime = now;
+            } else {
+              _checkOutTime = now;
+            }
+          });
+
+          // Show success
+          _showSuccessSnackbar(
+            'Presensi $jenis berhasil diupdate!',
+            now,
+            'Data presensi telah diperbarui',
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: Responsive.spacing(10)),
+                  Expanded(child: Text(msg)),
+                ],
+              ),
+              backgroundColor: NeoMiraiColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Responsive.radius(12))),
             ),
-            backgroundColor: NeoMiraiColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Responsive.radius(12))),
-          ),
-        );
+          );
+        }
       }
     }
   }

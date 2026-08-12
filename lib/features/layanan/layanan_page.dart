@@ -4,6 +4,8 @@ import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../dashboard/dashboard_page.dart';
 import '../profile/profile_page.dart';
+import '../presensi/presensi_page.dart';
+import '../riwayat/riwayat_presensi_page.dart';
 
 class LayananPage extends StatefulWidget {
   const LayananPage({super.key});
@@ -449,35 +451,88 @@ class _LayananPageState extends State<LayananPage> {
   }
 
   void _onServiceTap(BuildContext context, ServiceMenu service) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(Responsive.radius(6)),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(Responsive.radius(8)),
-              ),
-              child: Icon(
-                service.icon,
-                color: Colors.white,
-                size: Responsive.iconSize(18),
-              ),
+    switch (service.title) {
+      case 'Presensi':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const PresensiPage()),
+        );
+        break;
+      case 'Riwayat Presensi':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RiwayatPresensiPage()),
+        );
+        break;
+      case 'Layanan':
+        // TODO: Navigate to Layanan catalog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.construction_rounded, color: Colors.white),
+                SizedBox(width: Responsive.spacing(10)),
+                const Expanded(child: Text('Fitur Layanan dalam pengembangan')),
+              ],
             ),
-            SizedBox(width: Responsive.spacing(12)),
-            Expanded(
-              child: Text('${service.title} - Fitur dalam pengembangan'),
+            backgroundColor: NeoMiraiColors.info,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Responsive.radius(12)),
             ),
-          ],
-        ),
-        backgroundColor: NeoMiraiColors.info,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Responsive.radius(12)),
-        ),
-      ),
-    );
+          ),
+        );
+        break;
+      case 'Pengajuan':
+        // TODO: Navigate to Pengajuan tracking
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.construction_rounded, color: Colors.white),
+                SizedBox(width: Responsive.spacing(10)),
+                const Expanded(child: Text('Fitur Pengajuan dalam pengembangan')),
+              ],
+            ),
+            backgroundColor: NeoMiraiColors.info,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Responsive.radius(12)),
+            ),
+          ),
+        );
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(Responsive.radius(6)),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(Responsive.radius(8)),
+                  ),
+                  child: Icon(
+                    service.icon,
+                    color: Colors.white,
+                    size: Responsive.iconSize(18),
+                  ),
+                ),
+                SizedBox(width: Responsive.spacing(12)),
+                Expanded(
+                  child: Text('${service.title} - Fitur dalam pengembangan'),
+                ),
+              ],
+            ),
+            backgroundColor: NeoMiraiColors.info,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Responsive.radius(12)),
+            ),
+          ),
+        );
+    }
   }
 
   Widget _buildBottomNav(BuildContext context) {
@@ -530,7 +585,10 @@ class _LayananPageState extends State<LayananPage> {
                   icon: Icons.history_rounded,
                   label: 'Riwayat',
                   isActive: false,
-                  onTap: () => _showComingSoon(context, 'Riwayat Presensi'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const RiwayatPresensiPage()),
+                  ),
                 ),
               ),
               Expanded(
@@ -600,24 +658,6 @@ class _LayananPageState extends State<LayananPage> {
     );
   }
 
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.construction_rounded, color: Colors.white),
-            SizedBox(width: Responsive.spacing(10)),
-            Expanded(child: Text('$feature sedang dalam pengembangan')),
-          ],
-        ),
-        backgroundColor: NeoMiraiColors.info,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Responsive.radius(12)),
-        ),
-      ),
-    );
-  }
 }
 
 class ServiceMenu {

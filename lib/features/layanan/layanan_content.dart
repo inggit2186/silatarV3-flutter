@@ -6,6 +6,8 @@ import '../../core/utils/responsive.dart';
 import '../../core/providers/kegiatan_provider.dart';
 import '../kegiatan/kegiatan_page.dart';
 import '../laporan/laporan_bulanan_page.dart';
+import '../presensi/presensi_page.dart';
+import '../riwayat/riwayat_presensi_page.dart';
 
 class LayananContent extends StatefulWidget {
   const LayananContent({super.key});
@@ -211,6 +213,28 @@ class _LayananContentState extends State<LayananContent> {
   }
 
   void _onServiceTap(BuildContext context, ServiceMenu service) {
+    // Handle Presensi menu
+    if (service.title == 'Presensi') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PresensiPage(),
+        ),
+      );
+      return;
+    }
+
+    // Handle Riwayat Presensi menu
+    if (service.title == 'Riwayat Presensi') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const RiwayatPresensiPage(),
+        ),
+      );
+      return;
+    }
+
     // Handle Kegiatan menu
     if (service.title == 'Kegiatan') {
       Navigator.push(

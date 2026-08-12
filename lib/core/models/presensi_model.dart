@@ -189,10 +189,17 @@ class PresensiHistory {
   factory PresensiHistory.fromJson(Map<String, dynamic> json) {
     final dataList = json['data'] as List<dynamic>? ?? [];
     return PresensiHistory(
-      bulan: json['bulan'] ?? 1,
-      tahun: json['tahun'] ?? 2024,
-      total: json['total'] ?? 0,
+      bulan: _parseInt(json['bulan']) ?? 1,
+      tahun: _parseInt(json['tahun']) ?? 2024,
+      total: _parseInt(json['total']) ?? 0,
       data: dataList.map((e) => Presensi.fromJson(e)).toList(),
     );
+  }
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }

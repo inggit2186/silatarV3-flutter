@@ -562,6 +562,17 @@ class ApiService {
           message: body['message'],
         );
       } else if (response.statusCode == 400) {
+        // Presensi sudah ada, treat as success with update message
+        final data = body['data'];
+        if (data != null) {
+          final presensi = data is Map && data.containsKey('presensi')
+              ? data['presensi']
+              : data;
+          return ApiResponse.success(
+            Presensi.fromJson(presensi),
+            message: body['message'] ?? 'Presensi sudah ada, data diperbarui',
+          );
+        }
         return ApiResponse.error(
           body['message'] ?? 'Presensi sudah dilakukan',
           statusCode: response.statusCode,
