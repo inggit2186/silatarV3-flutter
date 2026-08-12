@@ -26,7 +26,7 @@ class AuthService {
       final response = await _api.post(
         '/auth/login',
         data: {
-          'email': email,
+          'login': email,
           'password': password,
         },
       );
