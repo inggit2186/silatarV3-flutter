@@ -5,6 +5,7 @@ import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/providers/kegiatan_provider.dart';
 import '../kegiatan/kegiatan_page.dart';
+import '../laporan/laporan_bulanan_page.dart';
 
 class LayananContent extends StatefulWidget {
   const LayananContent({super.key});
@@ -224,15 +225,12 @@ class _LayananContentState extends State<LayananContent> {
       return;
     }
 
-    // Handle Laporan menu (show rekap tab)
+    // Handle Laporan menu (show Laporan CKH Bulanan)
     if (service.title == 'Laporan') {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ChangeNotifierProvider(
-            create: (_) => KegiatanProvider(),
-            child: const KegiatanPage(initialTab: 'rekap'),
-          ),
+          builder: (context) => const LaporanBulananPage(),
         ),
       );
       return;

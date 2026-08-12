@@ -272,6 +272,42 @@ class KegiatanService {
     }
   }
 
+  /// Get laporan CKH bulanan
+  Future<ApiResponse<Map<String, dynamic>>> getBulanan({
+    required String year,
+  }) async {
+    try {
+      final token = await StorageService().getToken();
+      if (token == null || token.isEmpty) {
+        return ApiResponse.error('Token tidak valid');
+      }
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatan}/bulanan')
+          .replace(queryParameters: {'year': year});
+
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.authHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return ApiResponse.success(data['data']);
+        } else {
+          return ApiResponse.error(data['message'] ?? 'Gagal memuat data');
+        }
+      } else {
+        return ApiResponse.error(
+          'Gagal memuat data',
+          statusCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return ApiResponse.error('Error: ${e.toString()}');
+    }
+  }
+
   /// Download PDF Laporan Kegiatan
   Future<ApiResponse<Uint8List>> downloadPdf({
     required String month,
