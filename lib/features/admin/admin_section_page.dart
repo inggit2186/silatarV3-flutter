@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../janji_temu/admin_janji_temu_page.dart';
+import '../simpeg/admin_simpeg_page.dart';
 
 /// Admin section page - only accessible for admin/petugas/kasi/kasubag/kepala roles
 class AdminSectionPage extends StatelessWidget {
@@ -78,10 +79,17 @@ class AdminSectionPage extends StatelessWidget {
         page: const AdminJanjiTemuPage(),
       ),
       AdminMenu(
+        title: 'Verifikasi SIMPEG',
+        subtitle: 'Proses request reset password SIMPEG',
+        icon: Icons.admin_panel_settings_rounded,
+        color: NeoMiraiColors.gold,
+        page: const AdminSimpegPage(),
+      ),
+      AdminMenu(
         title: 'Kelola Pengajuan',
         subtitle: 'Proses pengajuan layanan dari pengguna',
         icon: Icons.description_rounded,
-        color: NeoMiraiColors.gold,
+        color: NeoMiraiColors.nightSoft,
         page: null, // Coming soon
       ),
       AdminMenu(

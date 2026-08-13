@@ -9,6 +9,7 @@ import '../laporan/laporan_bulanan_page.dart';
 import '../presensi/presensi_page.dart';
 import '../riwayat/riwayat_presensi_page.dart';
 import '../janji_temu/riwayat_janji_temu_page.dart';
+import '../simpeg/simpeg_reset_password_page.dart';
 
 class LayananContent extends StatefulWidget {
   const LayananContent({super.key});
@@ -267,6 +268,17 @@ class _LayananContentState extends State<LayananContent> {
         context,
         MaterialPageRoute(
           builder: (context) => const RiwayatJanjiTemuPage(),
+        ),
+      );
+      return;
+    }
+
+    // Handle SIMPEG menu
+    if (service.title == 'SIMPEG') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SimpegResetPasswordPage(),
         ),
       );
       return;

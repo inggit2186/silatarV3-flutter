@@ -7,6 +7,7 @@ import '../profile/profile_page.dart';
 import '../presensi/presensi_page.dart';
 import '../riwayat/riwayat_presensi_page.dart';
 import '../janji_temu/riwayat_janji_temu_page.dart';
+import '../simpeg/simpeg_reset_password_page.dart';
 
 class LayananPage extends StatefulWidget {
   const LayananPage({super.key});
@@ -488,6 +489,12 @@ class _LayananPageState extends State<LayananPage> {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const RiwayatJanjiTemuPage()),
+        );
+        break;
+      case 'SIMPEG':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const SimpegResetPasswordPage()),
         );
         break;
       case 'Pengajuan':

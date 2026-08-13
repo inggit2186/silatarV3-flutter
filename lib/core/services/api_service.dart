@@ -1011,4 +1011,145 @@ class ApiService {
       return ApiResponse.error('Terjadi kesalahan: $e');
     }
   }
+
+  // ============ SIMPEG ============
+
+  /// Submit SIMPEG password reset request
+  Future<ApiResponse<Map<String, dynamic>>> submitSimpegResetPassword() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/simpeg/reset-password'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengirim request',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get user's SIMPEG requests
+  Future<ApiResponse<List<Map<String, dynamic>>>> getSimpegRequests() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/simpeg/my-requests'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = body['data'] ?? [];
+        return ApiResponse.success(data.cast<Map<String, dynamic>>());
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil data',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  // ============ ADMIN SIMPEG ============
+
+  /// Get all SIMPEG requests for admin
+  Future<ApiResponse<List<Map<String, dynamic>>>> getAdminSimpegRequests({
+    int page = 1,
+    int perPage = 10,
+    String? status,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      };
+      if (status != null) queryParams['status'] = status;
+
+      final uri = Uri.parse('$_baseUrl/admin/simpeg')
+          .replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final dynamic dataField = body['data'];
+        List<Map<String, dynamic>> dataList = [];
+
+        if (dataField is List) {
+          dataList = dataField.cast<Map<String, dynamic>>();
+        } else if (dataField is Map<String, dynamic>) {
+          // Handle paginated response
+          if (dataField.containsKey('data') && dataField['data'] is List) {
+            dataList = (dataField['data'] as List).cast<Map<String, dynamic>>();
+          }
+        }
+
+        return ApiResponse.success(dataList);
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil data',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Verify SIMPEG request
+  Future<ApiResponse<Map<String, dynamic>>> verifySimpegRequest(int id, {
+    required String status,
+    required String keterangan,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/admin/simpeg/$id/verify'),
+        headers: _headers,
+        body: jsonEncode({
+          'status': status,
+          'keterangan': keterangan,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal memverifikasi',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
 }
