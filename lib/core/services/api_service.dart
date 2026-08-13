@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/layanan_model.dart';
 import '../models/presensi_model.dart';
+import '../models/janji_temu_model.dart';
 import 'storage_service.dart';
 
 /// Base URL untuk API
@@ -637,6 +638,242 @@ class ApiService {
       } else {
         return ApiResponse.error(
           body['message'] ?? 'Gagal mengambil riwayat presensi',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  // ============ JANJI TEMU ============
+
+  /// Submit janji temu baru
+  Future<ApiResponse<Map<String, dynamic>>> submitJanjiTemu({
+    required int deptId,
+    String? nipTujuan,
+    required String tipe,
+    required String tanggal,
+    required String jam,
+    required String keterangan,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/janji-temu'),
+        headers: _headers,
+        body: jsonEncode({
+          'dept_id': deptId,
+          'nip_tujuan': nipTujuan,
+          'tipe': tipe,
+          'tanggal': tanggal,
+          'jam': jam,
+          'keterangan': keterangan,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal membuat janji temu',
+          statusCode: response.statusCode,
+          errors: _extractErrors(body),
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get my appointments list
+  Future<ApiResponse<JanjiTemuHistory>> getMyAppointments({
+    int page = 1,
+    int perPage = 10,
+    String? status,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      };
+      if (status != null) queryParams['status'] = status;
+
+      final uri = Uri.parse('$_baseUrl/janji-temu/my-appointments')
+          .replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        // Response format:
+        // {
+        //   "success": true,
+        //   "data": [...], // List of items
+        //   "meta": { "current_page": 1, "last_page": 5, ... }
+        // }
+
+        final List<dynamic> dataList = body['data'] ?? [];
+        final Map<String, dynamic> meta = body['meta'] is Map ? body['meta'] : {};
+
+        // Convert each item to JanjiTemu model with type safety
+        final List<JanjiTemu> appointments = [];
+        for (var item in dataList) {
+          if (item is Map<String, dynamic>) {
+            try {
+              appointments.add(JanjiTemu.fromJson(item));
+            } catch (e) {
+              // ignore: avoid_print
+              print('Error parsing janji temu item: $e');
+            }
+          }
+        }
+
+        // Parse meta with explicit type conversion
+        int parseIntValue(dynamic value, int defaultValue) {
+          if (value == null) return defaultValue;
+          if (value is int) return value;
+          if (value is String) return int.tryParse(value) ?? defaultValue;
+          if (value is double) return value.toInt();
+          return defaultValue;
+        }
+
+        return ApiResponse.success(JanjiTemuHistory(
+          data: appointments,
+          currentPage: parseIntValue(meta['current_page'], 1),
+          lastPage: parseIntValue(meta['last_page'], 1),
+          perPage: parseIntValue(meta['per_page'], 10),
+          total: parseIntValue(meta['total'], 0),
+        ));
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil riwayat janji temu',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get janji temu detail
+  Future<ApiResponse<JanjiTemu>> getJanjiTemuDetail(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/janji-temu/$id'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final dynamic responseData = body['data'];
+
+        if (responseData is Map<String, dynamic>) {
+          return ApiResponse.success(JanjiTemu.fromJson(responseData));
+        } else if (responseData is String) {
+          return ApiResponse.error('Server mengembalikan error: $responseData');
+        } else {
+          return ApiResponse.error('Format response tidak valid');
+        }
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil detail janji temu',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Cancel janji temu
+  Future<ApiResponse<Map<String, dynamic>>> cancelJanjiTemu(int id, {String? alasan}) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/janji-temu/$id/cancel'),
+        headers: _headers,
+        body: jsonEncode({
+          'alasan': alasan ?? 'Dibatalkan oleh pengguna',
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal membatalkan janji temu',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get departments list
+  Future<ApiResponse<List<JanjiTemuDepartment>>> getDepartments() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/janji-temu/departments'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = body['data'] ?? [];
+        final departments = data.map((d) => JanjiTemuDepartment.fromJson(d)).toList();
+        return ApiResponse.success(departments);
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil daftar unit kerja',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get employees in department
+  Future<ApiResponse<Map<String, dynamic>>> getDepartmentEmployees(int deptId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/janji-temu/departments/$deptId/employees'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(body['data'] ?? {});
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil daftar pegawai',
           statusCode: response.statusCode,
         );
       }

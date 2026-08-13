@@ -6,6 +6,7 @@ import '../dashboard/dashboard_page.dart';
 import '../profile/profile_page.dart';
 import '../presensi/presensi_page.dart';
 import '../riwayat/riwayat_presensi_page.dart';
+import '../janji_temu/riwayat_janji_temu_page.dart';
 
 class LayananPage extends StatefulWidget {
   const LayananPage({super.key});
@@ -481,6 +482,12 @@ class _LayananPageState extends State<LayananPage> {
               borderRadius: BorderRadius.circular(Responsive.radius(12)),
             ),
           ),
+        );
+        break;
+      case 'Janji Temu':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const RiwayatJanjiTemuPage()),
         );
         break;
       case 'Pengajuan':
