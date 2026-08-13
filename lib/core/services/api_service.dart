@@ -883,4 +883,132 @@ class ApiService {
       return ApiResponse.error('Terjadi kesalahan: $e');
     }
   }
+
+  // ============ ADMIN JANJI TEMU ============
+
+  /// Get admin appointments list
+  Future<ApiResponse<JanjiTemuHistory>> getAdminAppointments({
+    int page = 1,
+    int perPage = 10,
+    String? status,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      };
+      if (status != null) queryParams['status'] = status;
+
+      final uri = Uri.parse('$_baseUrl/admin/janji-temu')
+          .replace(queryParameters: queryParams);
+
+      final response = await http.get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> dataList = body['data'] ?? [];
+        final Map<String, dynamic> meta = body['meta'] is Map ? body['meta'] : {};
+
+        final List<JanjiTemu> appointments = [];
+        for (var item in dataList) {
+          if (item is Map<String, dynamic>) {
+            try {
+              appointments.add(JanjiTemu.fromJson(item));
+            } catch (e) {
+              // Skip invalid items
+            }
+          }
+        }
+
+        int parseIntValue(dynamic value, int defaultValue) {
+          if (value == null) return defaultValue;
+          if (value is int) return value;
+          if (value is String) return int.tryParse(value) ?? defaultValue;
+          if (value is double) return value.toInt();
+          return defaultValue;
+        }
+
+        return ApiResponse.success(JanjiTemuHistory(
+          data: appointments,
+          currentPage: parseIntValue(meta['current_page'], 1),
+          lastPage: parseIntValue(meta['last_page'], 1),
+          perPage: parseIntValue(meta['per_page'], 10),
+          total: parseIntValue(meta['total'], 0),
+        ));
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil data janji temu',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Approve janji temu
+  Future<ApiResponse<Map<String, dynamic>>> approveJanjiTemu(int id, {String? komen}) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/admin/janji-temu/$id/approve'),
+        headers: _headers,
+        body: jsonEncode({
+          'komen': komen ?? 'Disetujui oleh petugas',
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal menyetujui janji temu',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Reject janji temu
+  Future<ApiResponse<Map<String, dynamic>>> rejectJanjiTemu(int id, {required String komen}) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/admin/janji-temu/$id/reject'),
+        headers: _headers,
+        body: jsonEncode({
+          'komen': komen,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal menolak janji temu',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
 }

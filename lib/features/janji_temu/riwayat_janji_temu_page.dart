@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/services/api_service.dart';
 import '../../core/models/janji_temu_model.dart';
+import '../../core/providers/user_provider.dart';
 import 'detail_janji_temu_page.dart';
 import 'buat_janji_temu_page.dart';
+import 'admin_janji_temu_page.dart';
 
 class RiwayatJanjiTemuPage extends StatefulWidget {
   const RiwayatJanjiTemuPage({super.key});
@@ -181,11 +184,11 @@ class _RiwayatJanjiTemuPageState extends State<RiwayatJanjiTemuPage> {
             SizedBox(width: Responsive.spacing(8)),
             _buildFilterChip('Menunggu', 'APPOINTMENT'),
             SizedBox(width: Responsive.spacing(8)),
-            _buildFilterChip('Disetujui', 'APPROVED'),
+            _buildFilterChip('Disetujui', 'DITERIMA'),
             SizedBox(width: Responsive.spacing(8)),
-            _buildFilterChip('Ditolak', 'REJECTED'),
+            _buildFilterChip('Ditolak', 'DITOLAK'),
             SizedBox(width: Responsive.spacing(8)),
-            _buildFilterChip('Dibatalkan', 'CANCELLED'),
+            _buildFilterChip('Dibatalkan', 'BATAL'),
           ],
         ),
       ),
@@ -369,10 +372,13 @@ class _RiwayatJanjiTemuPageState extends State<RiwayatJanjiTemuPage> {
   Color _getStatusColor(String? status) {
     return switch (status) {
       'APPOINTMENT' => NeoMiraiColors.warning,
+      'ON SITE' => NeoMiraiColors.info,
       'PENDING' => NeoMiraiColors.info,
-      'APPROVED' => NeoMiraiColors.success,
-      'REJECTED' => NeoMiraiColors.error,
-      'CANCELLED' => NeoMiraiColors.ash,
+      'DITERIMA' => NeoMiraiColors.success,
+      'DITOLAK' => NeoMiraiColors.error,
+      'BATAL' => NeoMiraiColors.ash,
+      'EXPIRED' => NeoMiraiColors.ash,
+      'SUKSES' => NeoMiraiColors.success,
       _ => NeoMiraiColors.ash,
     };
   }

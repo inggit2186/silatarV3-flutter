@@ -122,10 +122,13 @@ class JanjiTemu {
   String get statusColorHex {
     return switch (status) {
       'APPOINTMENT' => '#FCD34D', // yellow
+      'ON SITE' => '#60A5FA', // blue
       'PENDING' => '#60A5FA', // blue
-      'APPROVED' => '#34D399', // emerald
-      'REJECTED' => '#F87171', // red
-      'CANCELLED' => '#9CA3AF', // gray
+      'DITERIMA' => '#34D399', // emerald
+      'DITOLAK' => '#F87171', // red
+      'BATAL' => '#9CA3AF', // gray
+      'EXPIRED' => '#9CA3AF', // gray
+      'SUKSES' => '#34D399', // emerald
       _ => '#9CA3AF', // gray
     };
   }
