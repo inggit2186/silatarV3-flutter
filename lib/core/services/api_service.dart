@@ -1152,4 +1152,116 @@ class ApiService {
       return ApiResponse.error('Terjadi kesalahan: $e');
     }
   }
+
+  // ============ ACARA / KEGIATAN ============
+
+  /// Get list of acara/events
+  Future<ApiResponse<List<Map<String, dynamic>>>> getAcaraList() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/acara'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final dynamic dataField = body['data'];
+        List<Map<String, dynamic>> dataList = [];
+
+        if (dataField is List) {
+          dataList = dataField.cast<Map<String, dynamic>>();
+        } else if (dataField is Map<String, dynamic>) {
+          if (dataField.containsKey('data') && dataField['data'] is List) {
+            dataList = (dataField['data'] as List).cast<Map<String, dynamic>>();
+          }
+        }
+
+        return ApiResponse.success(dataList);
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil data acara',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Submit attendance (Hadir)
+  Future<ApiResponse<Map<String, dynamic>>> submitHadir(int acaraId, {
+    required double latitude,
+    required double longitude,
+    double? distance,
+    String? location,
+    String? foto,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/acara/$acaraId/hadir'),
+        headers: _headers,
+        body: jsonEncode({
+          'latitude': latitude,
+          'longitude': longitude,
+          'distance': distance,
+          'location': location,
+          'foto': foto,
+        }),
+      ).timeout(const Duration(seconds: 60));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengirim presensi',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Submit not attendance (Tidak Hadir)
+  Future<ApiResponse<Map<String, dynamic>>> submitTidakHadir(int acaraId, {
+    required String keterangan,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/acara/$acaraId/tidak-hadir'),
+        headers: _headers,
+        body: jsonEncode({
+          'keterangan': keterangan,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return ApiResponse.success(
+          body['data'] ?? {},
+          message: body['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengirim keterangan',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
 }

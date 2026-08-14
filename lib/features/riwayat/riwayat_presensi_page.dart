@@ -258,14 +258,21 @@ class _RiwayatPresensiPageState extends State<RiwayatPresensiPage> {
       return _buildEmptyState();
     }
 
+    // Urutkan dari tanggal terbaru (terbaru di atas)
+    final sortedData = List<Presensi>.from(data)..sort((a, b) {
+      final dateA = DateTime.tryParse(a.tanggal) ?? DateTime.now();
+      final dateB = DateTime.tryParse(b.tanggal) ?? DateTime.now();
+      return dateB.compareTo(dateA); // Descending (terbaru di atas)
+    });
+
     return RefreshIndicator(
       onRefresh: _loadRiwayat,
       color: NeoMiraiColors.gold,
       child: ListView.builder(
         padding: EdgeInsets.all(Responsive.spacing(16)),
-        itemCount: data.length,
+        itemCount: sortedData.length,
         itemBuilder: (context, index) {
-          return _buildPresensiCard(data[index], index);
+          return _buildPresensiCard(sortedData[index], index);
         },
       ),
     );
