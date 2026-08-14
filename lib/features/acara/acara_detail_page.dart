@@ -324,6 +324,7 @@ class _AcaraDetailPageState extends State<AcaraDetailPage> {
     final jamSelesai = _acara!['jam_selesei'] ?? '-';
     final lokasi = _acara!['lokasi'] ?? '-';
     final deskripsi = _acara!['deskripsi'] ?? '-';
+    final filename = _acara!['filename'];
     final statusKehadiran = _acara!['status_kehadiran'];
     final sudahPresensi = _acara!['sudah_presensi'] ?? false;
 
@@ -332,6 +333,38 @@ class _AcaraDetailPageState extends State<AcaraDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Cover Photo
+          if (filename != null && filename.toString().isNotEmpty)
+            Container(
+              margin: EdgeInsets.only(bottom: Responsive.spacing(16)),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Responsive.radius(16)),
+                boxShadow: [
+                  BoxShadow(
+                    color: NeoMiraiColors.ink.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Responsive.radius(16)),
+                child: Image.network(
+                  'http://127.0.0.1:8000/storage/acara/$filename',
+                  width: double.infinity,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 200,
+                    color: NeoMiraiColors.paperSoft,
+                    child: Center(
+                      child: Icon(Icons.image_not_supported_rounded, size: 48, color: NeoMiraiColors.ash),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // Acara Info Card
           _buildInfoCard(judul, tanggal, jamMulai, jamSelesai, lokasi, deskripsi),
 
