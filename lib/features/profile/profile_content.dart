@@ -4,6 +4,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/providers/user_provider.dart';
+import 'edit_profile_page.dart';
+import 'change_password_page.dart';
 
 class ProfileContent extends StatelessWidget {
   const ProfileContent({super.key});
@@ -117,9 +119,9 @@ class ProfileContent extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildMenuItem(context, icon: Icons.person_outline_rounded, title: 'Edit Profil', onTap: () => _showComingSoon(context, 'Edit Profil')),
+          _buildMenuItem(context, icon: Icons.person_outline_rounded, title: 'Edit Profil', onTap: () => _navigateToEditProfile(context)),
           Divider(height: 1, color: NeoMiraiColors.line.withValues(alpha: 0.5)),
-          _buildMenuItem(context, icon: Icons.lock_outline_rounded, title: 'Ubah Password', onTap: () => _showComingSoon(context, 'Ubah Password')),
+          _buildMenuItem(context, icon: Icons.lock_outline_rounded, title: 'Ubah Password', onTap: () => _navigateToChangePassword(context)),
           Divider(height: 1, color: NeoMiraiColors.line.withValues(alpha: 0.5)),
           _buildMenuItem(context, icon: Icons.notifications_outlined, title: 'Notifikasi', onTap: () => _showComingSoon(context, 'Notifikasi')),
           Divider(height: 1, color: NeoMiraiColors.line.withValues(alpha: 0.5)),
@@ -141,6 +143,24 @@ class ProfileContent extends StatelessWidget {
       title: Text(title, style: TextStyle(fontSize: Responsive.fontSize(13), fontWeight: FontWeight.w500, color: NeoMiraiColors.ink)),
       trailing: Icon(Icons.chevron_right_rounded, size: Responsive.iconSize(20), color: NeoMiraiColors.inkSoft),
       onTap: onTap,
+    );
+  }
+
+  void _navigateToEditProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const EditProfilePage(),
+      ),
+    );
+  }
+
+  void _navigateToChangePassword(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ChangePasswordPage(),
+      ),
     );
   }
 

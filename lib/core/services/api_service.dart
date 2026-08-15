@@ -251,6 +251,158 @@ class ApiService {
     }
   }
 
+  // ============ PROFILE UPDATE ============
+
+  /// Update user profile
+  Future<ApiResponse<User>> updateProfile({
+    String? name,
+    String? nik,
+    String? email,
+    String? noHp,
+    String? alamat,
+    String? tempatLahir,
+    String? tanggalLahir,
+    String? jenisKelamin,
+    String? bio,
+  }) async {
+    try {
+      await _loadTokenFromStorage();
+
+      final body = <String, dynamic>{};
+      if (name != null) body['name'] = name;
+      if (nik != null) body['nik'] = nik;
+      if (email != null) body['email'] = email;
+      if (noHp != null) body['no_hp'] = noHp;
+      if (alamat != null) body['alamat'] = alamat;
+      if (tempatLahir != null) body['tempat_lahir'] = tempatLahir;
+      if (tanggalLahir != null) body['tanggal_lahir'] = tanggalLahir;
+      if (jenisKelamin != null) body['jenis_kelamin'] = jenisKelamin;
+      if (bio != null) body['bio'] = bio;
+
+      final response = await http.put(
+        Uri.parse('$_baseUrl/user/profile'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 30));
+
+      final responseBody = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final userData = responseBody['data'];
+        return ApiResponse.success(
+          User.fromJson(userData),
+          message: responseBody['message'] ?? 'Profil berhasil diupdate',
+        );
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        return ApiResponse.error('Sesi berakhir, silakan login ulang', statusCode: 401);
+      } else if (response.statusCode == 422) {
+        return ApiResponse.error(
+          responseBody['message'] ?? 'Validasi gagal',
+          statusCode: response.statusCode,
+          errors: _extractErrors(responseBody),
+        );
+      } else {
+        return ApiResponse.error(
+          responseBody['message'] ?? 'Gagal mengupdate profil',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Update profile photo
+  Future<ApiResponse<Map<String, dynamic>>> updateProfilePhoto(String filePath) async {
+    try {
+      await _loadTokenFromStorage();
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/user/profile/photo'),
+      );
+
+      request.headers.addAll(_headers);
+      request.files.add(await http.MultipartFile.fromPath('foto', filePath));
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamedResponse)
+          .timeout(const Duration(seconds: 60));
+
+      final responseBody = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(
+          responseBody['data'] ?? {},
+          message: responseBody['message'] ?? 'Foto berhasil diupdate',
+        );
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        return ApiResponse.error('Sesi berakhir, silakan login ulang', statusCode: 401);
+      } else {
+        return ApiResponse.error(
+          responseBody['message'] ?? 'Gagal mengupdate foto',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Change password
+  Future<ApiResponse<bool>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String newPasswordConfirmation,
+  }) async {
+    try {
+      await _loadTokenFromStorage();
+
+      final response = await http.put(
+        Uri.parse('$_baseUrl/auth/change-password'),
+        headers: _headers,
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'password': newPassword,
+          'password_confirmation': newPasswordConfirmation,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final responseBody = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(
+          true,
+          message: responseBody['message'] ?? 'Password berhasil diubah',
+        );
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        return ApiResponse.error('Sesi berakhir, silakan login ulang', statusCode: 401);
+      } else if (response.statusCode == 422) {
+        return ApiResponse.error(
+          responseBody['message'] ?? 'Validasi gagal',
+          statusCode: response.statusCode,
+          errors: _extractErrors(responseBody),
+        );
+      } else {
+        return ApiResponse.error(
+          responseBody['message'] ?? 'Gagal mengubah password',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
   // ============ LAYANAN (SERVICES) ============
 
   /// Get all services (layanan)

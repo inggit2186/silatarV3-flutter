@@ -5,9 +5,16 @@ class User {
   final String email;
   final String? nip;
   final String? nomorInduk;
+  final String? nik;
+  final String? noHp;
+  final String? alamat;
+  final String? tempatLahir;
+  final DateTime? tanggalLahir;
+  final String? jenisKelamin;
   final String? avatar;
   final String? foto;
   final String? pp;
+  final String? bio;
   final String role;
   final String? unitKerja;
   final int? unitId;
@@ -20,9 +27,16 @@ class User {
     required this.email,
     this.nip,
     this.nomorInduk,
+    this.nik,
+    this.noHp,
+    this.alamat,
+    this.tempatLahir,
+    this.tanggalLahir,
+    this.jenisKelamin,
     this.avatar,
     this.foto,
     this.pp,
+    this.bio,
     required this.role,
     this.unitKerja,
     this.unitId,
@@ -43,9 +57,16 @@ class User {
       email: _parseString(json['email']),
       nip: _parseStringOrNull(json['nip']),
       nomorInduk: _parseStringOrNull(json['nomor_induk']),
+      nik: _parseStringOrNull(json['nik']),
+      noHp: _parseStringOrNull(json['no_hp']),
+      alamat: _parseStringOrNull(json['alamat']),
+      tempatLahir: _parseStringOrNull(json['tempat_lahir']),
+      tanggalLahir: _parseDateTime(json['tanggal_lahir']),
+      jenisKelamin: _parseStringOrNull(json['jenis_kelamin']),
       avatar: _parseStringOrNull(json['avatar']),
       foto: _parseStringOrNull(json['foto']),
       pp: _parseStringOrNull(json['pp']),
+      bio: _parseStringOrNull(json['bio']),
       role: _parseString(json['role'] ?? 'pegawai'),
       unitKerja: _parseStringOrNull(json['unit_kerja'] ?? json['unit_nama'] ?? json['unit_id']),
       unitId: json['unit_id'] != null ? _parseInt(json['unit_id']) : null,
@@ -89,15 +110,69 @@ class User {
       'email': email,
       'nip': nip,
       'nomor_induk': nomorInduk,
+      'nik': nik,
+      'no_hp': noHp,
+      'alamat': alamat,
+      'tempat_lahir': tempatLahir,
+      'tanggal_lahir': tanggalLahir?.toIso8601String(),
+      'jenis_kelamin': jenisKelamin,
       'avatar': avatar,
       'foto': foto,
       'pp': pp,
+      'bio': bio,
       'role': role,
       'unit_kerja': unitKerja,
       'unit_id': unitId,
       'dept': dept?.toJson(),
       'created_at': createdAt?.toIso8601String(),
     };
+  }
+
+  /// Create a copy of User with updated fields
+  User copyWith({
+    int? id,
+    String? name,
+    String? email,
+    String? nip,
+    String? nomorInduk,
+    String? nik,
+    String? noHp,
+    String? alamat,
+    String? tempatLahir,
+    DateTime? tanggalLahir,
+    String? jenisKelamin,
+    String? avatar,
+    String? foto,
+    String? pp,
+    String? bio,
+    String? role,
+    String? unitKerja,
+    int? unitId,
+    Department? dept,
+    DateTime? createdAt,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      nip: nip ?? this.nip,
+      nomorInduk: nomorInduk ?? this.nomorInduk,
+      nik: nik ?? this.nik,
+      noHp: noHp ?? this.noHp,
+      alamat: alamat ?? this.alamat,
+      tempatLahir: tempatLahir ?? this.tempatLahir,
+      tanggalLahir: tanggalLahir ?? this.tanggalLahir,
+      jenisKelamin: jenisKelamin ?? this.jenisKelamin,
+      avatar: avatar ?? this.avatar,
+      foto: foto ?? this.foto,
+      pp: pp ?? this.pp,
+      bio: bio ?? this.bio,
+      role: role ?? this.role,
+      unitKerja: unitKerja ?? this.unitKerja,
+      unitId: unitId ?? this.unitId,
+      dept: dept ?? this.dept,
+      createdAt: createdAt ?? this.createdAt,
+    );
   }
 
   String get displayName => name.isNotEmpty ? name : (email.isNotEmpty ? email : (nip ?? nomorInduk ?? '-'));
