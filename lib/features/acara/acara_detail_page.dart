@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/services/api_service.dart';
@@ -112,9 +113,9 @@ class _AcaraDetailPageState extends State<AcaraDetailPage> {
             child: Text('Batal', style: TextStyle(color: NeoMiraiColors.inkSoft)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              Navigator.push(
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => AcaraPresensiPage(
@@ -126,6 +127,10 @@ class _AcaraDetailPageState extends State<AcaraDetailPage> {
                   ),
                 ),
               );
+              // Reload data after returning from presensi
+              if (result == true) {
+                _loadAcaraDetail();
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: NeoMiraiColors.success,
@@ -315,11 +320,25 @@ class _AcaraDetailPageState extends State<AcaraDetailPage> {
     );
   }
 
+  String _formatTanggalIndonesia(String tanggal) {
+    try {
+      final date = DateTime.parse(tanggal);
+      final months = [
+        '', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      return '${date.day} ${months[date.month]} ${date.year}';
+    } catch (e) {
+      return tanggal;
+    }
+  }
+
   Widget _buildContent() {
     if (_acara == null) return _buildEmptyState();
 
     final judul = _acara!['judul'] ?? '-';
-    final tanggal = _acara!['tanggal'] ?? '-';
+    final tanggalRaw = _acara!['tanggal'] ?? '-';
+    final tanggal = _formatTanggalIndonesia(tanggalRaw);
     final jamMulai = _acara!['jam_mulai'] ?? '-';
     final jamSelesai = _acara!['jam_selesei'] ?? '-';
     final lokasi = _acara!['lokasi'] ?? '-';
