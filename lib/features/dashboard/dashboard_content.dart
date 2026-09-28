@@ -138,16 +138,6 @@ class _DashboardContentState extends State<DashboardContent> {
             ),
             itemBuilder: (context) => [
               PopupMenuItem(
-                value: 'profile',
-                child: Row(
-                  children: [
-                    Icon(Icons.person_outline, color: NeoMiraiColors.ink),
-                    SizedBox(width: Responsive.spacing(10)),
-                    const Text('Profil Saya'),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
                 value: 'logout',
                 child: Row(
                   children: [
@@ -159,9 +149,7 @@ class _DashboardContentState extends State<DashboardContent> {
               ),
             ],
             onSelected: (value) {
-              if (value == 'profile') {
-                // Close popup - user can tap Profile tab in navbar
-              } else if (value == 'logout') {
+              if (value == 'logout') {
                 _handleLogout(context);
               }
             },
