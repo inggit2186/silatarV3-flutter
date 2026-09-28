@@ -4,8 +4,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/services/api_service.dart';
 import 'edit_profile_page.dart';
 import 'change_password_page.dart';
+import '../welcome/welcome_page.dart';
 
 class ProfileContent extends StatelessWidget {
   const ProfileContent({super.key});
@@ -24,6 +26,7 @@ class ProfileContent extends StatelessWidget {
               _buildHeader(context),
               _buildProfileInfo(context, user),
               _buildMenuItems(context),
+              _buildLogoutButton(context),
             ],
           ),
         ),
@@ -222,6 +225,61 @@ class ProfileContent extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.all(Responsive.spacing(16)),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: () => _handleLogout(context),
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('Logout'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: NeoMiraiColors.error,
+            side: const BorderSide(color: NeoMiraiColors.error),
+            padding: EdgeInsets.symmetric(vertical: Responsive.spacing(14)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Responsive.radius(12)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Responsive.radius(20))),
+        title: Row(children: [Icon(Icons.logout_rounded, color: NeoMiraiColors.error), SizedBox(width: Responsive.spacing(10)), const Text('Konfirmasi Logout')]),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await ApiService.instance.logout();
+              // Clear user from provider
+              if (context.mounted) {
+                context.read<UserProvider>().clearUser();
+              }
+              // Navigate to WelcomePage
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const WelcomePage()),
+                  (route) => false,
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: NeoMiraiColors.error, foregroundColor: Colors.white),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
     );
   }
 }
