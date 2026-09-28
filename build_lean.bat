@@ -5,9 +5,9 @@ echo  SILATAR V2 - Build APK Optimized
 echo ============================================
 echo.
 
-REM Set version
+REM Usage: build_lean.bat [arm64|arm|all|debug]
 set VERSION=%1
-if "%VERSION%"=="" set VERSION=release
+if "%VERSION%"=="" set VERSION=all
 
 echo Build Type: %VERSION%
 echo.
@@ -33,8 +33,15 @@ if "%VERSION%"=="arm64" (
     echo Building DEBUG APK...
     flutter build apk --debug
 ) else (
-    echo Building ALL architectures (universal)...
+    echo Building ALL architectures (arm64 + arm32)...
     flutter build apk --release --split-per-abi
+)
+
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Build failed!
+    pause
+    exit /b 1
 )
 
 REM Copy APKs to output folder
@@ -52,7 +59,7 @@ if not exist "output" mkdir "output"
 REM Copy all APKs
 copy /Y "build\app\outputs\flutter-apk\app-armeabi-v7a-release.apk" "output\silatar_v2-arm32.apk" 2>nul
 copy /Y "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk" "output\silatar_v2-arm64.apk" 2>nul
-copy /Y "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk" "output\silatar_v2.apk" 2>nul
+copy /Y "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk" "output\silatar_v2-recommended.apk" 2>nul
 
 REM Show results
 echo.
@@ -74,6 +81,6 @@ if exist "output\silatar_v2-arm32.apk" (
 )
 
 echo.
-echo Recommended: Use silatar_v2-arm64.apk for modern phones
+echo Recommended: Use silatar_v2-recommended.apk (arm64) for modern phones
 echo.
 pause
