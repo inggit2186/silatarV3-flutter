@@ -120,39 +120,20 @@ class _DashboardContentState extends State<DashboardContent> {
               ],
             ),
           ),
-          PopupMenuButton<String>(
+          IconButton(
+            onPressed: () => _handleLogout(context),
             icon: Container(
               padding: EdgeInsets.all(Responsive.radius(8)),
               decoration: BoxDecoration(
-                color: NeoMiraiColors.line.withValues(alpha: 0.5),
+                color: NeoMiraiColors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(Responsive.radius(10)),
               ),
               child: Icon(
-                Icons.more_vert_rounded,
+                Icons.logout_rounded,
                 size: Responsive.iconSize(20),
-                color: NeoMiraiColors.ink,
+                color: NeoMiraiColors.error,
               ),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Responsive.radius(12)),
-            ),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout_rounded, color: NeoMiraiColors.error),
-                    SizedBox(width: Responsive.spacing(10)),
-                    const Text('Logout'),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (value) {
-              if (value == 'logout') {
-                _handleLogout(context);
-              }
-            },
           ),
         ],
       ),
