@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'storage_service.dart';
+import 'api_config.dart';
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -105,12 +106,4 @@ class ApiClient {
     });
     return _dio.post(path, data: formData);
   }
-}
-
-class ApiConfig {
-  // Base URL - change this to your server URL
-  // For Android emulator: use 10.0.2.2 instead of localhost
-  // For iOS simulator: use localhost
-  // For physical device testing with localhost: use http://127.0.0.1:8000/api
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
 }

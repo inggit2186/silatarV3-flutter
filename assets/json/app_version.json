@@ -1,0 +1,7 @@
+{
+  "version": "1.0.0",
+  "version_code": 1,
+  "download_url": "https://domain.com/download/silatar.apk",
+  "changelog": "Versi awal aplikasi",
+  "is_mandatory": false
+}

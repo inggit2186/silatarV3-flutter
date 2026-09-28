@@ -200,8 +200,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         // Logo Badge
         Container(
           padding: EdgeInsets.symmetric(
-            horizontal: Responsive.spacing(12),
-            vertical: Responsive.spacing(8),
+            horizontal: Responsive.spacing(10),
+            vertical: Responsive.spacing(6),
           ),
           decoration: BoxDecoration(
             color: NeoMiraiColors.rice,
@@ -220,16 +220,27 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: EdgeInsets.all(Responsive.radius(6)),
-                decoration: BoxDecoration(
-                  gradient: NeoMiraiTheme.goldGradient,
-                  borderRadius: BorderRadius.circular(Responsive.radius(6)),
-                ),
-                child: Icon(
-                  Icons.account_balance_rounded,
-                  size: Responsive.iconSize(16),
-                  color: NeoMiraiColors.rice,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(Responsive.radius(6)),
+                child: Image.asset(
+                  'assets/images/logo.webp',
+                  width: Responsive.iconSize(30),
+                  height: Responsive.iconSize(30),
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      padding: EdgeInsets.all(Responsive.radius(4)),
+                      decoration: BoxDecoration(
+                        gradient: NeoMiraiTheme.goldGradient,
+                        borderRadius: BorderRadius.circular(Responsive.radius(6)),
+                      ),
+                      child: Icon(
+                        Icons.account_balance_rounded,
+                        size: Responsive.iconSize(16),
+                        color: NeoMiraiColors.rice,
+                      ),
+                    );
+                  },
                 ),
               ),
               SizedBox(width: Responsive.spacing(8)),
@@ -278,98 +289,50 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
   Widget _buildIllustration(BuildContext context) {
     final isSmallPhone = context.isSmallPhone;
-    final width = Responsive.width(isSmallPhone ? 0.7 : 0.75);
-    final height = Responsive.height(isSmallPhone ? 0.2 : 0.22);
+    final logoSize = Responsive.iconSize(isSmallPhone ? 60 : 70);
 
-    return Container(
-      width: width,
-      height: height,
-      constraints: const BoxConstraints(
-        maxWidth: 280,
-        maxHeight: 200,
-      ),
-      decoration: BoxDecoration(
-        gradient: NeoMiraiTheme.nightGradient,
-        borderRadius: BorderRadius.circular(Responsive.radius(24)),
-        border: Border.all(
-          color: NeoMiraiColors.nightSoft.withValues(alpha: 0.5),
-          width: 1,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Logo
+        Image.asset(
+          'assets/images/logo.webp',
+          width: logoSize,
+          height: logoSize,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Icon(
+              Icons.account_balance_rounded,
+              size: logoSize,
+              color: NeoMiraiColors.gold,
+            );
+          },
         ),
-        boxShadow: [
-          BoxShadow(
-            color: NeoMiraiColors.night.withValues(alpha: 0.3),
-            blurRadius: 25,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Background Pattern
-          Positioned(
-            top: -15,
-            right: -15,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: NeoMiraiColors.gold.withValues(alpha: 0.1),
+        SizedBox(height: Responsive.spacing(12)),
+        // SILATAR - Bold Text with Glow
+        Text(
+          'SILATAR',
+          style: TextStyle(
+            fontFamily: 'Chakra Petch',
+            fontSize: Responsive.fontSize(32),
+            fontWeight: FontWeight.w800,
+            color: NeoMiraiColors.ink,
+            letterSpacing: 6,
+            shadows: [
+              Shadow(
+                color: NeoMiraiColors.gold.withValues(alpha: 0.6),
+                offset: const Offset(0, 0),
+                blurRadius: 20,
               ),
-            ),
-          ),
-          Positioned(
-            bottom: -20,
-            left: -20,
-            child: Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: NeoMiraiColors.nightSoft.withValues(alpha: 0.3),
+              Shadow(
+                color: Colors.black12,
+                offset: const Offset(0, 2),
+                blurRadius: 6,
               ),
-            ),
+            ],
           ),
-
-          // Content
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(Responsive.radius(isSmallPhone ? 14 : 16)),
-                  decoration: BoxDecoration(
-                    color: NeoMiraiColors.gold.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(Responsive.radius(20)),
-                  ),
-                  child: Icon(
-                    Icons.lock_outline_rounded,
-                    size: Responsive.iconSize(isSmallPhone ? 40 : 50),
-                    color: NeoMiraiColors.gold,
-                  ),
-                ),
-                SizedBox(height: Responsive.spacing(10)),
-                const Text(
-                  'MASUK',
-                  style: TextStyle(
-                    color: NeoMiraiColors.rice,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                ),
-                Text(
-                  'Akses akun Anda',
-                  style: TextStyle(
-                    color: NeoMiraiColors.rice.withValues(alpha: 0.8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -391,32 +354,40 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         ],
       ),
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.account_balance_rounded,
-              size: Responsive.iconSize(50),
-              color: NeoMiraiColors.gold,
-            ),
-            SizedBox(height: Responsive.spacing(12)),
-            const Text(
-              'SILATAR',
-              style: TextStyle(
-                color: NeoMiraiColors.rice,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 3,
-              ),
-            ),
-            Text(
-              'Layanan Agama Tanah Datar',
-              style: TextStyle(
-                color: NeoMiraiColors.rice.withValues(alpha: 0.8),
-                fontSize: 11,
-              ),
-            ),
-          ],
+        child: Image.asset(
+          'assets/images/logo.webp',
+          width: 100,
+          height: 100,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.account_balance_rounded,
+                  size: Responsive.iconSize(50),
+                  color: NeoMiraiColors.gold,
+                ),
+                SizedBox(height: Responsive.spacing(12)),
+                const Text(
+                  'SILATAR',
+                  style: TextStyle(
+                    color: NeoMiraiColors.rice,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                  ),
+                ),
+                Text(
+                  'Layanan Agama Tanah Datar',
+                  style: TextStyle(
+                    color: NeoMiraiColors.rice.withValues(alpha: 0.8),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

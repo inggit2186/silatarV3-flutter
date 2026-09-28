@@ -45,6 +45,9 @@ dependencies:
   # Image Picker
   image_picker: ^1.1.2
 
+  # Hot Code Push (flutter_patcher)
+  flutter_patcher: ^0.1.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -68,5 +71,6 @@ flutter:
           weight: 500
         - asset: assets/fonts/Poppins-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Poppins-Bold.ttf
-          weight: 700
+flutter_launcher_icons:
+  image_path_android: "assets/icons/icon_compressed.png"
+  image_path_ios: "assets/icons/icon_compressed.png"

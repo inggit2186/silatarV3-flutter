@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'api_config.dart';
 import '../models/user_model.dart';
 import '../models/layanan_model.dart';
 import '../models/presensi_model.dart';
@@ -14,7 +15,7 @@ import 'storage_service.dart';
 ///
 /// Untuk WiFi (device dan komputer satu jaringan): gunakan http://IP_KOMPUTER:8000/api
 /// Cek IP dengan: ipconfig (Windows)
-const _baseUrl = 'http://127.0.0.1:8000/api';
+const _baseUrl = ApiConfig.baseUrl;
 
 /// API Response wrapper
 class ApiResponse<T> {

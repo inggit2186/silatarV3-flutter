@@ -7,7 +7,6 @@ import '../../core/utils/responsive.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/api_service.dart';
 import '../pengajuan/pengajuan_page.dart';
-import '../profile/profile_page.dart';
 import '../welcome/welcome_page.dart';
 
 class DashboardContent extends StatefulWidget {

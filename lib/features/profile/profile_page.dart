@@ -184,7 +184,7 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(Responsive.radius(18)),
             ),
             child: Text(
-              user?.role?.toUpperCase() ?? 'PEGAWAI',
+              user?.role.toUpperCase() ?? 'PEGAWAI',
               style: TextStyle(
                 fontSize: Responsive.fontSize(11),
                 fontWeight: FontWeight.w600,

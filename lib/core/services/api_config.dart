@@ -4,7 +4,7 @@ class ApiConfig {
   // Development (emulator): http://10.0.2.2:8000/api
   // Development (real device dengan adb reverse): http://127.0.0.1:8000/api
   // Production: https://domain.com/api
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
+  static const String baseUrl = 'https://kemenagtanahdatar.id/api';
 
   // Alternative - gunakan IP komputer jika emulator tidak bisa localhost
   // static const String baseUrl = 'http://192.168.1.x/silatarV2/public/api';
