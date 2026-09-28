@@ -335,7 +335,7 @@ class _DashboardContentState extends State<DashboardContent> {
                 ),
                 SizedBox(height: Responsive.spacing(2)),
                 Text(
-                  'Kemenag Tanah Datar',
+                  user?.unitKerja ?? user?.dept?.nama ?? 'Kemenag Tanah Datar',
                   style: TextStyle(fontSize: Responsive.fontSize(isSmall ? 9 : 11), color: NeoMiraiColors.rice.withValues(alpha: 0.8)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

@@ -68,7 +68,9 @@ class User {
       pp: _parseStringOrNull(json['pp']),
       bio: _parseStringOrNull(json['bio']),
       role: _parseString(json['role'] ?? 'pegawai'),
-      unitKerja: _parseStringOrNull(json['unit_kerja'] ?? json['unit_nama'] ?? json['unit_id']),
+      unitKerja: _parseStringOrNull(
+        json['dept'] is Map ? json['dept']['nama'] : (json['unit_kerja'] ?? json['unit_nama']),
+      ),
       unitId: json['unit_id'] != null ? _parseInt(json['unit_id']) : null,
       dept: dept,
       createdAt: _parseDateTime(json['created_at']),
@@ -178,9 +180,16 @@ class User {
   String get displayName => name.isNotEmpty ? name : (email.isNotEmpty ? email : (nip ?? nomorInduk ?? '-'));
 
   String? get photoUrl {
-    if (pp != null && pp!.isNotEmpty) return pp;
-    if (avatar != null && avatar!.isNotEmpty) return avatar;
-    if (foto != null && foto!.isNotEmpty) return foto;
+    // Backend already returns full URL, so just return pp directly
+    if (pp != null && pp!.isNotEmpty) {
+      return pp;
+    }
+    if (avatar != null && avatar!.isNotEmpty) {
+      return avatar;
+    }
+    if (foto != null && foto!.isNotEmpty) {
+      return foto;
+    }
     return null;
   }
 
