@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_patcher/flutter_patcher.dart';
+import 'package:http/http.dart' as http;
 
 /// Service untuk hot code push menggunakan flutter_patcher
 /// Update kode Dart tanpa perlu reinstall APK
@@ -17,12 +19,18 @@ class PatchService {
 
   bool _isInitialized = false;
 
-  /// Patch server URL - ganti dengan URL server Anda
-  /// Contoh: https://kemenagtanahdatar.id/patches/
-  static const String _patchServerUrl = 'https://kemenagtanahdatar.id/patches/';
+  /// Base URL API - sesuai dengan backend Laravel
+  static const String _baseUrl = 'https://kemenagtanahdatar.id/api';
 
-  /// Current version dari base APK
-  static const int _baseVersionCode = 1; // Update setiap release APK baru
+  /// Endpoint untuk cek patch/update
+  static const String _patchCheckUrl = '$_baseUrl/patch/check';
+
+  /// Base version code dari APK (increment setiap release APK baru)
+  /// Ini adalah version_code di database, BUKAN version string
+  static const int _baseVersionCode = 1;
+
+  /// Current app version string
+  static const String _appVersion = '2.0.0';
 
   /// Initialize flutter_patcher
   Future<void> initialize() async {
@@ -104,7 +112,7 @@ class PatchService {
     }
   }
 
-  /// Get current patch version (Future)
+  /// Get current patch version
   Future<String?> get currentVersion => FlutterPatcher.currentVersion;
 
   /// Check apakah ada patch aktif
@@ -113,9 +121,52 @@ class PatchService {
   /// Get status info
   Map<String, dynamic> get status => {
         'initialized': _isInitialized,
-        'serverUrl': _patchServerUrl,
+        'serverUrl': _baseUrl,
         'baseVersionCode': _baseVersionCode,
+        'appVersion': _appVersion,
       };
+
+  /// Check for available patch from server
+  /// Returns AppPatchInfo if update available, null otherwise
+  Future<AppPatchInfo?> checkForPatch() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_patchCheckUrl?version=$_appVersion&version_code=$_baseVersionCode'),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['hasUpdate'] == true || data['needUpdate'] == true) {
+          return AppPatchInfo.fromCheckUpdateResponse(data);
+        }
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('[PatchService] Error checking for patch: $e');
+      return null;
+    }
+  }
+
+  /// Check and apply patch automatically
+  Future<PatchResult> checkAndApply() async {
+    final patchInfo = await checkForPatch();
+
+    if (patchInfo == null) {
+      return PatchResult(
+        success: true,
+        message: 'Tidak ada patch tersedia.',
+      );
+    }
+
+    return checkAndApplyPatch(
+      patchVersion: patchInfo.version,
+      patchMd5: patchInfo.md5,
+      patchUrl: patchInfo.downloadUrl,
+    );
+  }
 }
 
 /// Result dari patch operation
@@ -137,18 +188,43 @@ class AppPatchInfo {
   final String version;
   final String md5;
   final String downloadUrl;
+  final int versionCode;
+  final int fileSize;
+  final String changelog;
+  final bool isMandatory;
 
   AppPatchInfo({
     required this.version,
     required this.md5,
     required this.downloadUrl,
+    this.versionCode = 0,
+    this.fileSize = 0,
+    this.changelog = '',
+    this.isMandatory = false,
   });
 
   factory AppPatchInfo.fromJson(Map<String, dynamic> json) {
     return AppPatchInfo(
-      version: json['version'] ?? '',
+      version: json['latestVersion'] ?? json['version'] ?? '',
       md5: json['md5'] ?? '',
-      downloadUrl: json['download_url'] ?? '',
+      downloadUrl: json['downloadUrl'] ?? json['patchUrl'] ?? json['download_url'] ?? '',
+      versionCode: json['version_code'] ?? 0,
+      fileSize: json['fileSize'] ?? 0,
+      changelog: json['changelog'] ?? '',
+      isMandatory: json['isMandatory'] ?? json['is_mandatory'] ?? false,
+    );
+  }
+
+  /// Parse dari API check update response
+  factory AppPatchInfo.fromCheckUpdateResponse(Map<String, dynamic> json) {
+    return AppPatchInfo(
+      version: json['latestVersion'] ?? '',
+      md5: json['md5'] ?? '',
+      downloadUrl: json['downloadUrl'] ?? json['patchUrl'] ?? '',
+      versionCode: json['version_code'] ?? 0,
+      fileSize: json['fileSize'] ?? 0,
+      changelog: json['changelog'] ?? '',
+      isMandatory: json['isMandatory'] ?? json['is_mandatory'] ?? false,
     );
   }
 }
