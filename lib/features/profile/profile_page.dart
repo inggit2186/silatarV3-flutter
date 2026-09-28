@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/neo_components.dart';
 import '../../core/services/api_service.dart';
+import '../../core/providers/user_provider.dart';
+import 'edit_profile_page.dart';
+import 'change_password_page.dart';
+import '../welcome/welcome_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -109,6 +114,10 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildProfileCard(BuildContext context) {
+    final user = context.watch<UserProvider>().user;
+    final hasPhoto = user?.hasPhoto ?? false;
+    final photoUrl = user?.photoUrl;
+
     return Container(
       padding: EdgeInsets.all(Responsive.cardPadding(24)),
       decoration: BoxDecoration(
@@ -116,7 +125,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(Responsive.radius(24)),
         boxShadow: [
           BoxShadow(
-            color: NeoMiraiColors.night.withValues(alpha: 0.3),
+            color: NeoMiraiTheme.night.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -126,22 +135,36 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           // Avatar
           Container(
-            padding: EdgeInsets.all(Responsive.radius(16)),
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: NeoMiraiColors.gold.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(Responsive.radius(20)),
             ),
-            child: Icon(
-              Icons.person_rounded,
-              size: Responsive.iconSize(56),
-              color: NeoMiraiColors.gold,
-            ),
+            child: hasPhoto && photoUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(Responsive.radius(20)),
+                    child: Image.network(
+                      photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.person_rounded,
+                        size: Responsive.iconSize(40),
+                        color: NeoMiraiColors.gold,
+                      ),
+                    ),
+                  )
+                : Icon(
+                    Icons.person_rounded,
+                    size: Responsive.iconSize(40),
+                    color: NeoMiraiColors.gold,
+                  ),
           ),
           SizedBox(height: Responsive.spacing(16)),
 
           // Name
           Text(
-            'Nama User',
+            user?.displayName ?? 'Nama User',
             style: TextStyle(
               fontSize: Responsive.fontSize(20),
               fontWeight: FontWeight.bold,
@@ -161,7 +184,7 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(Responsive.radius(18)),
             ),
             child: Text(
-              'Pegawai',
+              user?.role?.toUpperCase() ?? 'PEGAWAI',
               style: TextStyle(
                 fontSize: Responsive.fontSize(11),
                 fontWeight: FontWeight.w600,
@@ -178,7 +201,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _buildInfoItem(
                 icon: Icons.badge_outlined,
                 label: 'NIP',
-                value: '-',
+                value: user?.nip ?? user?.nomorInduk ?? '-',
               ),
               Container(
                 width: 1,
@@ -189,7 +212,7 @@ class _ProfilePageState extends State<ProfilePage> {
               _buildInfoItem(
                 icon: Icons.email_outlined,
                 label: 'Email',
-                value: '-',
+                value: user?.email ?? '-',
               ),
             ],
           ),
@@ -229,6 +252,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 fontWeight: FontWeight.w600,
                 color: NeoMiraiColors.rice,
               ),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -255,14 +279,24 @@ class _ProfilePageState extends State<ProfilePage> {
             icon: Icons.person_outline_rounded,
             title: 'Edit Profil',
             subtitle: 'Ubah informasi akun Anda',
-            onTap: () => _showComingSoon(context),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EditProfilePage()),
+              );
+            },
           ),
           _buildDivider(),
           _buildMenuItem(
             icon: Icons.lock_outline_rounded,
             title: 'Ubah Password',
             subtitle: 'Update password akun',
-            onTap: () => _showComingSoon(context),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+              );
+            },
           ),
           _buildDivider(),
           _buildMenuItem(
@@ -475,7 +509,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void _handleLogout(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Responsive.radius(20)),
         ),
@@ -489,15 +523,23 @@ class _ProfilePageState extends State<ProfilePage> {
         content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Batal'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               await ApiService.instance.logout();
-              if (mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
+              // Clear user from provider
+              if (context.mounted) {
+                context.read<UserProvider>().clearUser();
+              }
+              // Navigate to WelcomePage
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const WelcomePage()),
+                  (route) => false,
+                );
               }
             },
             style: ElevatedButton.styleFrom(

@@ -8,6 +8,7 @@ import '../../core/providers/user_provider.dart';
 import '../../core/services/api_service.dart';
 import '../pengajuan/pengajuan_page.dart';
 import '../profile/profile_page.dart';
+import '../welcome/welcome_page.dart';
 
 class DashboardContent extends StatefulWidget {
   const DashboardContent({super.key});
@@ -652,8 +653,12 @@ class _DashboardContentState extends State<DashboardContent> {
               if (context.mounted) {
                 context.read<UserProvider>().clearUser();
               }
-              if (mounted) {
-                Navigator.of(context).popUntil((route) => route.isFirst);
+              // Navigate to WelcomePage
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const WelcomePage()),
+                  (route) => false,
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: NeoMiraiColors.error, foregroundColor: NeoMiraiColors.rice),
