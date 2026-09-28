@@ -160,22 +160,7 @@ class _DashboardContentState extends State<DashboardContent> {
             ],
             onSelected: (value) {
               if (value == 'profile') {
-                Navigator.pop(context); // Close popup
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Row(
-                      children: [
-                        Icon(Icons.touch_app_rounded, color: Colors.white),
-                        SizedBox(width: 10),
-                        Text('Tap tab Profil di bawah untuk melihat profil'),
-                      ],
-                    ),
-                    backgroundColor: NeoMiraiColors.info,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
+                // Close popup - user can tap Profile tab in navbar
               } else if (value == 'logout') {
                 _handleLogout(context);
               }
