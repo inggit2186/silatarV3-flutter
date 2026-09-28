@@ -6,8 +6,8 @@ plugins {
 
 android {
     namespace = "com.example.silatar_v2"
-    compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -15,20 +15,49 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.silatar_v2"
         // flutter_patcher requires minSdk 24
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Enable multidex for large apps
+        multiDexEnabled = true
     }
 
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // Enable code shrinking with R8
+            isMinifyEnabled = true
+
+            // Enable obfuscation
+            isShrinkResources = true
+
+            // Remove debug symbols to reduce size
+            ndk {
+                debugSymbolLevel = DebugSymbolLevel.NONE
+            }
+        }
+
+        // Debug build type for smaller test builds
+        debug {
+            isMinifyEnabled = false
+            isDebuggable = true
+        }
+    }
+
+    // Split APKs by ABI for smaller individual APKs
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            // Build for specific ABIs only
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = true
         }
     }
 }
