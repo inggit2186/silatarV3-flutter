@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Base configuration for all network traffic -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust system CAs -->
+            <certificates src="system" />
+            <!-- Trust user-added CA (for development/debugging) -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Domain-specific configuration for production API -->
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Production domain -Kemenag Tanah Datar -->
+        <domain includeSubdomains="true">kemenagtanahdatar.id</domain>
+        <domain includeSubdomains="true">www.kemenagtanahdatar.id</domain>
+        <!-- Allow Google Fonts CDN for custom fonts -->
+        <domain includeSubdomains="true">fonts.googleapis.com</domain>
+        <domain includeSubdomains="true">fonts.gstatic.com</domain>
+    </domain-config>
+</network-security-config>
