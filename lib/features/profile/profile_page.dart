@@ -125,7 +125,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(Responsive.radius(24)),
         boxShadow: [
           BoxShadow(
-            color: NeoMiraiTheme.night.withValues(alpha: 0.3),
+            color: NeoMiraiColors.night.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
