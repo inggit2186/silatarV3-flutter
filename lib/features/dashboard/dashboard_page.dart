@@ -5,6 +5,7 @@ import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/models/user_model.dart';
 import '../../core/services/api_service.dart';
+import '../../core/config/app_version.dart';
 import '../layanan/layanan_page.dart';
 import '../pengajuan/pengajuan_page.dart';
 import '../profile/profile_page.dart';
@@ -862,7 +863,7 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
             _buildInfoItem(
               icon: Icons.apps_rounded,
               title: 'SILATAR V2',
-              desc: 'Versi 2.0.0',
+              desc: 'Versi ${AppVersion.full}',
             ),
             SizedBox(height: Responsive.spacing(12)),
             _buildInfoItem(

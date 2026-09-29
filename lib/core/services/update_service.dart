@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import '../config/app_version.dart';
 import 'apk_update_service.dart';
 import 'patch_service.dart';
 import 'api_config.dart';
@@ -25,22 +26,12 @@ class UpdateService {
   static String get _baseUrl => ApiConfig.baseUrl;
   static String get _checkUrl => '$_baseUrl/patch/check';
 
-  // Current app version (should match pubspec.yaml)
-  // NOTE: These are fallback defaults. Actual version code is loaded from PatchService
-  static const int _baseVersionCode = 1;
-  static const String _currentVersion = '2.0.0';
+  /// Get current version string from AppVersion config
+  static String get currentVersion => AppVersion.display;
 
-  /// Get current version string
-  static String get currentVersion => _currentVersion;
-
-  /// Get current version code
-  /// Returns applied version code from PatchService if available,
-  /// otherwise falls back to base version code
-  static int get currentVersionCode {
-    // Access the singleton to get the cached value
-    // This is set by PatchService.initialize() which loads from SharedPreferences
-    return PatchService.instance.appliedVersionCode;
-  }
+  /// Get current version code from AppVersion config
+  /// Returns base version code for APK update comparison
+  static int get currentVersionCode => AppVersion.baseVersionCode;
 
   /// Async getter for version code (ensures latest value is loaded)
   static Future<int> getCurrentVersionCode() async {
@@ -54,7 +45,7 @@ class UpdateService {
     int? customVersionCode,
   }) async {
     try {
-      final version = customVersion ?? _currentVersion;
+      final version = customVersion ?? currentVersion;
       final versionCode = customVersionCode ?? currentVersionCode;
 
       debugPrint('[UpdateService] ==================================');

@@ -1,7 +1,7 @@
 name: silatar_v2
 description: "SILATAR V2 - Aplikasi Mobile Layanan Kementerian Agama Tanah Datar"
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.1+3
 
 environment:
   sdk: ^3.12.2
