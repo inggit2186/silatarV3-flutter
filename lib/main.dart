@@ -77,10 +77,13 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeAndNavigate() async {
-    // Check for updates in background (only in release mode)
-    if (!kDebugMode && !_checkedUpdate) {
+    // Check for updates in background
+    // Enable check in debug mode for testing (set to true to always check)
+    final bool enableUpdateCheck = true; // Change to false to disable in debug
+    if ((!kDebugMode || enableUpdateCheck) && !_checkedUpdate) {
       _checkedUpdate = true;
       _pendingUpdate = await UpdateService.instance.checkForUpdate();
+      debugPrint('[Splash] Update check completed: ${_pendingUpdate != null ? "Update available" : "No update"}');
     }
 
     await Future.delayed(const Duration(milliseconds: 2000));

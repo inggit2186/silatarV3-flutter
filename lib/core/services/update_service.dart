@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_patcher/flutter_patcher.dart';
 import 'apk_update_service.dart';
 import 'patch_service.dart';
+import 'api_config.dart';
 
 /// Enum untuk tipe update
 enum UpdateType {
@@ -22,9 +23,9 @@ class UpdateService {
 
   final Dio _dio = Dio();
 
-  // API Configuration
-  static const String _baseUrl = 'https://kemenagtanahdatar.id/api';
-  static const String _checkUrl = '$_baseUrl/patch/check';
+  // API Configuration - use same base URL as ApiConfig
+  static String get _baseUrl => ApiConfig.baseUrl;
+  static String get _checkUrl => '$_baseUrl/patch/check';
 
   // Current app version (should match pubspec.yaml)
   static const int _currentVersionCode = 1;
@@ -44,8 +45,11 @@ class UpdateService {
       final version = customVersion ?? _currentVersion;
       final versionCode = customVersionCode ?? _currentVersionCode;
 
+      debugPrint('[UpdateService] ==================================');
       debugPrint('[UpdateService] Checking for updates...');
       debugPrint('[UpdateService] Current: v$version ($versionCode)');
+      debugPrint('[UpdateService] API URL: $_checkUrl');
+      debugPrint('[UpdateService] ==================================');
 
       final response = await _dio.get(
         _checkUrl,
@@ -59,12 +63,17 @@ class UpdateService {
         ),
       );
 
+      debugPrint('[UpdateService] Response status: ${response.statusCode}');
+      debugPrint('[UpdateService] Response data: ${response.data}');
+
       if (response.statusCode == 200) {
         final data = response.data;
 
         if (data['hasUpdate'] == true || data['needUpdate'] == true) {
           final info = UpdateInfo.fromJson(data);
-          debugPrint('[UpdateService] Update available: ${info.version} (${info.updateType})');
+          debugPrint('[UpdateService] ✅ Update available: ${info.version} (${info.updateType})');
+          debugPrint('[UpdateService]    Download URL: ${info.downloadUrl}');
+          debugPrint('[UpdateService]    Size: ${info.displaySize}');
           return info;
         }
 
@@ -74,10 +83,13 @@ class UpdateService {
 
       return null;
     } on DioException catch (e) {
-      debugPrint('[UpdateService] Network error: ${e.message}');
+      debugPrint('[UpdateService] ❌ Network error: ${e.message}');
+      debugPrint('[UpdateService]    Type: ${e.type}');
+      debugPrint('[UpdateService]    Response: ${e.response}');
       return null;
-    } catch (e) {
-      debugPrint('[UpdateService] Error: $e');
+    } catch (e, stackTrace) {
+      debugPrint('[UpdateService] ❌ Error: $e');
+      debugPrint('[UpdateService]    StackTrace: $stackTrace');
       return null;
     }
   }
@@ -298,7 +310,8 @@ class UpdateInfo {
 
     // Handle relative URLs
     if (downloadUrl.startsWith('/')) {
-      downloadUrl = 'https://kemenagtanahdatar.id$downloadUrl';
+      // Use ApiConfig baseUrl for relative URLs
+      downloadUrl = '${ApiConfig.baseUrl.replaceAll('/api', '')}$downloadUrl';
     }
 
     return UpdateInfo(
