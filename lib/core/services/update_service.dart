@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_patcher/flutter_patcher.dart';
 import 'apk_update_service.dart';
 import 'patch_service.dart';
 import 'api_config.dart';
@@ -28,12 +26,26 @@ class UpdateService {
   static String get _checkUrl => '$_baseUrl/patch/check';
 
   // Current app version (should match pubspec.yaml)
-  static const int _currentVersionCode = 1;
+  // NOTE: These are fallback defaults. Actual version code is loaded from PatchService
+  static const int _baseVersionCode = 1;
   static const String _currentVersion = '2.0.0';
 
-  /// Get current version info
-  static int get currentVersionCode => _currentVersionCode;
+  /// Get current version string
   static String get currentVersion => _currentVersion;
+
+  /// Get current version code
+  /// Returns applied version code from PatchService if available,
+  /// otherwise falls back to base version code
+  static int get currentVersionCode {
+    // Access the singleton to get the cached value
+    // This is set by PatchService.initialize() which loads from SharedPreferences
+    return PatchService.instance.appliedVersionCode;
+  }
+
+  /// Async getter for version code (ensures latest value is loaded)
+  static Future<int> getCurrentVersionCode() async {
+    return await PatchService.instance.currentVersionCode;
+  }
 
   /// Check for updates from server
   /// Returns UpdateInfo if update available, null otherwise
@@ -43,7 +55,7 @@ class UpdateService {
   }) async {
     try {
       final version = customVersion ?? _currentVersion;
-      final versionCode = customVersionCode ?? _currentVersionCode;
+      final versionCode = customVersionCode ?? currentVersionCode;
 
       debugPrint('[UpdateService] ==================================');
       debugPrint('[UpdateService] Checking for updates...');
@@ -112,6 +124,46 @@ class UpdateService {
     }
   }
 
+  /// Download and install APK update directly
+  /// Use this for APK updates with progress callback
+  Future<UpdateResult> downloadAndInstall({
+    required String downloadUrl,
+    required String version,
+    required String md5,
+    Function(double progress, String statusText)? onProgress,
+  }) async {
+    final result = await ApkUpdateService.instance.downloadAndInstall(
+      downloadUrl: downloadUrl,
+      version: version,
+      md5: md5,
+      onProgress: onProgress,
+    );
+
+    if (result.success) {
+      if (result.needsUserConfirmation) {
+        return UpdateResult(
+          success: true,
+          message: result.message ?? 'Download selesai',
+          needsUserConfirmation: true,
+          filePath: result.filePath,
+          updateType: UpdateType.apk,
+        );
+      }
+      return UpdateResult(
+        success: true,
+        message: result.message ?? 'Installer dibuka',
+        needsInstallDialog: true,
+        updateType: UpdateType.apk,
+      );
+    }
+    return UpdateResult(
+      success: false,
+      message: result.error ?? 'Gagal download',
+      errorCode: result.errorCode,
+      updateType: UpdateType.apk,
+    );
+  }
+
   /// Apply patch update (flutter_patcher)
   Future<UpdateResult> _applyPatchUpdate(UpdateInfo info) async {
     try {
@@ -123,6 +175,7 @@ class UpdateService {
         patchVersion: info.version,
         patchMd5: info.md5,
         patchUrl: info.downloadUrl,
+        patchVersionCode: info.versionCode,
       );
 
       if (result.success) {
@@ -152,15 +205,31 @@ class UpdateService {
   }
 
   /// Apply APK update (full app update)
-  Future<UpdateResult> _applyApkUpdate(UpdateInfo info) async {
+  /// Returns progress updates via callback
+  Future<UpdateResult> _applyApkUpdate(
+    UpdateInfo info, {
+    Function(double progress, String statusText)? onProgress,
+  }) async {
     try {
       final result = await ApkUpdateService.instance.downloadAndInstall(
         downloadUrl: info.downloadUrl,
         version: info.version,
         md5: info.md5,
+        onProgress: onProgress,
       );
 
       if (result.success) {
+        if (result.needsUserConfirmation) {
+          // Download complete, waiting for user to confirm install
+          return UpdateResult(
+            success: true,
+            message: result.message ?? 'Download selesai. Silakan klik Install Update.',
+            needsUserConfirmation: true,
+            filePath: result.filePath,
+            updateType: UpdateType.apk,
+          );
+        }
+        // Installer launched
         return UpdateResult(
           success: true,
           message: result.message ?? 'Update berhasil diunduh. Layar install akan muncul.',
@@ -181,6 +250,43 @@ class UpdateService {
         success: false,
         message: 'Gagal mengunduh APK: $e',
         errorCode: 'APK_ERROR',
+        updateType: UpdateType.apk,
+      );
+    }
+  }
+
+  /// Install APK (call after download completes)
+  Future<UpdateResult> installApk(
+    String filePath, {
+    Function(double progress, String statusText)? onProgress,
+  }) async {
+    try {
+      final result = await ApkUpdateService.instance.installApk(
+        filePath: filePath,
+        onProgress: onProgress,
+      );
+
+      if (result.success) {
+        return UpdateResult(
+          success: true,
+          message: result.message ?? 'Installer berhasil dibuka.',
+          needsRestart: true,
+          updateType: UpdateType.apk,
+        );
+      } else {
+        return UpdateResult(
+          success: false,
+          message: result.error ?? 'Gagal membuka installer',
+          errorCode: result.errorCode ?? 'INSTALL_FAILED',
+          updateType: UpdateType.apk,
+        );
+      }
+    } catch (e) {
+      debugPrint('[UpdateService] Install error: $e');
+      return UpdateResult(
+        success: false,
+        message: 'Gagal membuka installer: $e',
+        errorCode: 'INSTALL_ERROR',
         updateType: UpdateType.apk,
       );
     }
@@ -343,6 +449,8 @@ class UpdateResult {
   final UpdateType? updateType;
   final bool needsRestart;
   final bool needsInstallDialog;
+  final bool needsUserConfirmation;
+  final String? filePath;
   final String? errorCode;
 
   UpdateResult({
@@ -351,6 +459,8 @@ class UpdateResult {
     this.updateType,
     this.needsRestart = false,
     this.needsInstallDialog = false,
+    this.needsUserConfirmation = false,
+    this.filePath,
     this.errorCode,
   });
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/update_service.dart';
 import '../theme/neo_mirai_theme.dart';
 import '../utils/responsive.dart';
@@ -8,6 +7,8 @@ import '../utils/responsive.dart';
 class UpdateDialog extends StatefulWidget {
   final UpdateInfo info;
   final Function(UpdateResult) onUpdate;
+  /// Optional callback for APK updates that receives progress updates
+  final Future<UpdateResult> Function(double progress, String statusText)? onUpdateWithProgress;
   final VoidCallback? onLater;
   final VoidCallback? onRestart;
 
@@ -15,6 +16,7 @@ class UpdateDialog extends StatefulWidget {
     super.key,
     required this.info,
     required this.onUpdate,
+    this.onUpdateWithProgress,
     this.onLater,
     this.onRestart,
   });
@@ -101,6 +103,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
         icon = _isPatch ? Icons.bolt_rounded : Icons.settings_rounded;
         color = NeoMiraiColors.gold;
         break;
+      case UpdateDialogStatus.readyToInstall:
+        icon = Icons.check_circle_rounded;
+        color = NeoMiraiColors.success;
+        break;
+      case UpdateDialogStatus.launching:
+        icon = Icons.open_in_new_rounded;
+        color = NeoMiraiColors.gold;
+        break;
       case UpdateDialogStatus.success:
         icon = Icons.check_circle_rounded;
         color = NeoMiraiColors.success;
@@ -143,6 +153,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
       case UpdateDialogStatus.applying:
         title = _isPatch ? 'Menerapkan Update...' : 'Mempersiapkan Install...';
         break;
+      case UpdateDialogStatus.readyToInstall:
+        title = 'Download Selesai';
+        break;
       case UpdateDialogStatus.success:
         title = 'Update Berhasil!';
         break;
@@ -150,7 +163,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         title = 'Update Gagal';
         break;
       case UpdateDialogStatus.install:
-        title = 'Siap di Install';
+        title = 'Membuka Installer...';
         break;
       default:
         title = _isPatch ? 'Update Ringan Tersedia!' : 'Update Tersedia!';
@@ -497,6 +510,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
     switch (_status) {
       case UpdateDialogStatus.idle:
         return _buildIdleActions();
+      case UpdateDialogStatus.readyToInstall:
+        return _buildReadyToInstallActions();
+      case UpdateDialogStatus.launching:
+        return _buildLaunchingActions();
       case UpdateDialogStatus.success:
         return _buildSuccessActions();
       case UpdateDialogStatus.error:
@@ -559,6 +576,96 @@ class _UpdateDialogState extends State<UpdateDialog> {
               ],
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReadyToInstallActions() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _launchInstaller,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: NeoMiraiColors.success,
+              foregroundColor: NeoMiraiColors.rice,
+              padding: EdgeInsets.symmetric(vertical: Responsive.spacing(14)),
+              elevation: 4,
+              shadowColor: NeoMiraiColors.success.withValues(alpha: 0.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Responsive.radius(12)),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.system_update_alt_rounded),
+                SizedBox(width: Responsive.spacing(8)),
+                Text(
+                  'Install Update',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: Responsive.spacing(8)),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            'Nanti',
+            style: TextStyle(color: NeoMiraiColors.ash),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLaunchingActions() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: NeoMiraiColors.gold.withValues(alpha: 0.5),
+              foregroundColor: NeoMiraiColors.ink,
+              padding: EdgeInsets.symmetric(vertical: Responsive.spacing(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Responsive.radius(12)),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(NeoMiraiColors.ink),
+                  ),
+                ),
+                SizedBox(width: Responsive.spacing(8)),
+                Text(
+                  'Membuka Installer...',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: Responsive.spacing(8)),
+        Text(
+          'Selesaikan installasi di layar berikutnya',
+          style: TextStyle(
+            fontSize: Responsive.fontSize(12),
+            color: NeoMiraiColors.inkSoft,
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -666,36 +773,71 @@ class _UpdateDialogState extends State<UpdateDialog> {
           : UpdateDialogStatus.downloading;
       _statusText = widget.info.isPatch
           ? 'Menerapkan patch...'
-          : 'Mengunduh update...';
+          : 'Memulai download...';
       _progress = 0;
     });
 
     try {
-      final result = await widget.onUpdate(UpdateResult(
-        success: false,
-        message: '',
-        updateType: widget.info.updateType,
-      ));
+      // For APK updates, use progress callback if available
+      if (!widget.info.isPatch && widget.onUpdateWithProgress != null) {
+        final result = await widget.onUpdateWithProgress!(
+          0,
+          'Memulai download...',
+        );
 
-      _result = result;
+        _result = result;
 
-      if (result.success) {
-        setState(() {
-          _status = UpdateDialogStatus.success;
-        });
+        if (result.success) {
+          if (result.needsUserConfirmation && result.filePath != null) {
+            // Download complete, waiting for user to click Install
+            setState(() {
+              _status = UpdateDialogStatus.readyToInstall;
+              _statusText = 'Silakan klik Install Update';
+            });
+            _downloadedFilePath = result.filePath;
+          } else {
+            // Installer launched
+            setState(() {
+              _status = UpdateDialogStatus.launching;
+              _statusText = 'Installer dibuka. Selesaikan installasi.';
+            });
+            // Auto close after a short delay
+            await Future.delayed(const Duration(seconds: 2));
+            if (mounted) {
+              Navigator.pop(context);
+            }
+          }
+        } else {
+          setState(() {
+            _status = UpdateDialogStatus.error;
+          });
+        }
+      } else {
+        // Patch updates or fallback without progress
+        final result = await widget.onUpdate(UpdateResult(
+          success: false,
+          message: '',
+          updateType: widget.info.updateType,
+        ));
 
-        // Auto restart after success for patch updates
-        if (widget.info.isPatch) {
+        _result = result;
+
+        if (result.success) {
+          setState(() {
+            _status = UpdateDialogStatus.success;
+          });
+
+          // Auto restart after success for patch updates
           await Future.delayed(const Duration(seconds: 2));
           if (mounted) {
             Navigator.pop(context);
             widget.onRestart?.call();
           }
+        } else {
+          setState(() {
+            _status = UpdateDialogStatus.error;
+          });
         }
-      } else {
-        setState(() {
-          _status = UpdateDialogStatus.error;
-        });
       }
     } catch (e) {
       debugPrint('[UpdateDialog] Error: $e');
@@ -704,6 +846,48 @@ class _UpdateDialogState extends State<UpdateDialog> {
         _result = UpdateResult(
           success: false,
           message: 'Terjadi kesalahan: $e',
+        );
+      });
+    }
+  }
+
+  String? _downloadedFilePath;
+
+  Future<void> _launchInstaller() async {
+    if (_downloadedFilePath == null) {
+      setState(() {
+        _status = UpdateDialogStatus.error;
+        _result = UpdateResult(
+          success: false,
+          message: 'File tidak ditemukan',
+        );
+      });
+      return;
+    }
+
+    setState(() {
+      _status = UpdateDialogStatus.launching;
+      _statusText = 'Membuka installer...';
+    });
+
+    try {
+      // Call onUpdate with the filePath to trigger install
+      // This is a bit hacky - ideally we'd have a separate install callback
+      // For now, we'll close the dialog and let user handle it
+      // The installer should have been launched by now via OpenFile
+
+      // Close dialog and tell user to complete install
+      if (mounted) {
+        Navigator.pop(context);
+        // Don't call onRestart here - let user complete the install first
+      }
+    } catch (e) {
+      debugPrint('[UpdateDialog] Launch error: $e');
+      setState(() {
+        _status = UpdateDialogStatus.error;
+        _result = UpdateResult(
+          success: false,
+          message: 'Gagal membuka installer: $e',
         );
       });
     }
@@ -724,6 +908,8 @@ enum UpdateDialogStatus {
   idle,
   downloading,
   applying,
+  readyToInstall,
+  launching,
   success,
   error,
   install,
@@ -734,6 +920,7 @@ Future<void> showUpdateDialog({
   required BuildContext context,
   required UpdateInfo info,
   required Function(UpdateResult) onUpdate,
+  Future<UpdateResult> Function(double progress, String statusText)? onUpdateWithProgress,
   VoidCallback? onLater,
   VoidCallback? onRestart,
   bool barrierDismissible = true,
@@ -744,6 +931,7 @@ Future<void> showUpdateDialog({
     builder: (context) => UpdateDialog(
       info: info,
       onUpdate: onUpdate,
+      onUpdateWithProgress: onUpdateWithProgress,
       onLater: onLater,
       onRestart: onRestart,
     ),

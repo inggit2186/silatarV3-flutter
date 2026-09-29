@@ -6,6 +6,15 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+/// Phase of APK update process
+enum ApkUpdatePhase {
+  downloading,
+  verifying,
+  readyToInstall,
+  launching,
+  launched,
+}
+
 /// Service for downloading and installing full APK updates
 /// Used when native code or plugins need to be updated
 class ApkUpdateService {
@@ -15,9 +24,6 @@ class ApkUpdateService {
   ApkUpdateService._();
 
   final Dio _dio = Dio();
-
-  /// Download progress callback
-  Function(int received, int total)? onProgress;
 
   /// Check if device can install unknown apps
   Future<bool> canInstallUnknownApps() async {
@@ -41,7 +47,6 @@ class ApkUpdateService {
     }
 
     if (status.isPermanentlyDenied) {
-      // Need to open app settings
       await openAppSettings();
       return false;
     }
@@ -55,7 +60,6 @@ class ApkUpdateService {
 
     final androidInfo = await _getAndroidVersion();
     if (androidInfo >= 29) {
-      // Android 10+ doesn't need storage permission for app-specific dirs
       return true;
     }
 
@@ -69,27 +73,25 @@ class ApkUpdateService {
       return result.isGranted;
     }
 
-    return true; // Continue anyway on newer Android
+    return true;
   }
 
-  /// Get Android SDK version
   Future<int> _getAndroidVersion() async {
     try {
-      // This is a simplified check - in production use device_info_plus
-      return 29; // Default to Android 10+ assumption
+      return 29;
     } catch (e) {
       return 29;
     }
   }
 
-  /// Download and install APK update
-  /// Returns true if successful, false otherwise
-  Future<ApkUpdateResult> downloadAndInstall({
+  /// Download APK update
+  /// Returns ApkDownloadResult with file path on success
+  Future<ApkDownloadResult> downloadApk({
     required String downloadUrl,
     required String version,
     required String md5,
     String? fileName,
-    Function(int received, int total)? onProgress,
+    Function(double progress, String statusText)? onProgress,
   }) async {
     try {
       debugPrint('[ApkUpdate] Starting download: $downloadUrl');
@@ -98,7 +100,7 @@ class ApkUpdateService {
       final hasInstallPermission = await requestInstallPermission();
       if (!hasInstallPermission) {
         debugPrint('[ApkUpdate] Install permission denied');
-        return ApkUpdateResult(
+        return ApkDownloadResult(
           success: false,
           error: 'Izin install diperlukan. Silakan aktifkan di Settings > Apps > SILATAR > Install unknown apps',
           errorCode: 'PERMISSION_DENIED',
@@ -118,17 +120,18 @@ class ApkUpdateService {
         await file.delete();
       }
 
-      // 4. Download APK
+      // 4. Download APK with progress
       debugPrint('[ApkUpdate] Downloading to: $filePath');
 
       await _dio.download(
         downloadUrl,
         filePath,
         onReceiveProgress: (received, total) {
-          final progress = total > 0 ? received / total : 0.0;
-          this.onProgress?.call(received, total);
-          onProgress?.call(received, total);
-          debugPrint('[ApkUpdate] Progress: ${(progress * 100).toStringAsFixed(1)}%');
+          if (total > 0) {
+            final progress = received / total;
+            onProgress?.call(progress, 'Mengunduh update... ${(progress * 100).toStringAsFixed(0)}%');
+            debugPrint('[ApkUpdate] Progress: ${(progress * 100).toStringAsFixed(1)}%');
+          }
         },
         options: Options(
           receiveTimeout: const Duration(minutes: 15),
@@ -139,23 +142,25 @@ class ApkUpdateService {
       );
 
       debugPrint('[ApkUpdate] Download complete, file size: ${await file.length()} bytes');
+      onProgress?.call(1.0, 'Memverifikasi file...');
 
       // 5. Verify file exists
       if (!await file.exists()) {
-        return ApkUpdateResult(
+        return ApkDownloadResult(
           success: false,
           error: 'File download gagal',
           errorCode: 'FILE_NOT_FOUND',
         );
       }
 
-      // 6. Verify MD5 (if provided)
+      // 6. Verify MD5
       if (md5.isNotEmpty) {
+        onProgress?.call(1.0, 'Memverifikasi MD5...');
         final downloadedMd5 = await _calculateMd5(file);
         if (downloadedMd5.toLowerCase() != md5.toLowerCase()) {
           debugPrint('[ApkUpdate] MD5 mismatch: expected $md5, got $downloadedMd5');
           await file.delete();
-          return ApkUpdateResult(
+          return ApkDownloadResult(
             success: false,
             error: 'File verification gagal (MD5 tidak cocok)',
             errorCode: 'MD5_MISMATCH',
@@ -164,43 +169,11 @@ class ApkUpdateService {
         debugPrint('[ApkUpdate] MD5 verified: $downloadedMd5');
       }
 
-      // 7. Open system installer
-      debugPrint('[ApkUpdate] Opening installer...');
-
-      final result = await OpenFile.open(
-        filePath,
-        type: 'application/vnd.android.package-archive',
-      );
-
-      debugPrint('[ApkUpdate] OpenFile result: ${result.message}');
-
-      // Check if opened successfully
-      // ResultType values: done, opened, error, no_permission_to_open_file, activity_not_found
-      final isSuccess = result.message.toLowerCase().contains('done') ||
-          result.type.name == 'done' ||
-          result.type.name == 'opened';
-
-      if (isSuccess) {
-        return ApkUpdateResult(
-          success: true,
-          filePath: filePath,
-          message: 'Update berhasil diunduh. Layar install akan muncul.',
-        );
-      }
-
-      // Handle specific errors
-      if (result.message.contains('permission')) {
-        return ApkUpdateResult(
-          success: false,
-          error: 'Izin install ditolak. Silakan aktifkan di Settings.',
-          errorCode: 'PERMISSION_DENIED',
-        );
-      }
-
-      return ApkUpdateResult(
-        success: false,
-        error: 'Gagal membuka installer: ${result.message}',
-        errorCode: 'INSTALL_FAILED',
+      // Download complete, ready to install
+      return ApkDownloadResult(
+        success: true,
+        filePath: filePath,
+        message: 'Download selesai. Silakan klik "Install Update" untuk melanjutkan.',
       );
     } on DioException catch (e) {
       debugPrint('[ApkUpdate] DioError: ${e.message}');
@@ -214,7 +187,7 @@ class ApkUpdateService {
         errorMsg = 'File update tidak ditemukan.';
       }
 
-      return ApkUpdateResult(
+      return ApkDownloadResult(
         success: false,
         error: errorMsg,
         errorCode: 'DOWNLOAD_ERROR',
@@ -222,7 +195,7 @@ class ApkUpdateService {
     } catch (e, stackTrace) {
       debugPrint('[ApkUpdate] Error: $e');
       debugPrint('[ApkUpdate] StackTrace: $stackTrace');
-      return ApkUpdateResult(
+      return ApkDownloadResult(
         success: false,
         error: 'Terjadi kesalahan: $e',
         errorCode: 'UNKNOWN',
@@ -230,11 +203,115 @@ class ApkUpdateService {
     }
   }
 
+  /// Install downloaded APK
+  /// Call this after downloadApk returns success
+  Future<ApkInstallResult> installApk({
+    required String filePath,
+    Function(double progress, String statusText)? onProgress,
+  }) async {
+    try {
+      debugPrint('[ApkUpdate] Opening installer: $filePath');
+
+      onProgress?.call(0, 'Membuka installer...');
+
+      final result = await OpenFile.open(
+        filePath,
+        type: 'application/vnd.android.package-archive',
+      );
+
+      debugPrint('[ApkUpdate] OpenFile result: ${result.type.name} - ${result.message}');
+
+      // OpenFile returns "done" or "opened" when it successfully launches the installer
+      // This does NOT mean installation is complete, just that the installer was opened
+      final isLaunched = result.type.name == 'done' ||
+          result.type.name == 'opened' ||
+          result.message.toLowerCase().contains('done') ||
+          result.message.toLowerCase().contains('opened');
+
+      if (isLaunched) {
+        return ApkInstallResult(
+          success: true,
+          message: 'Installer berhasil dibuka. Mohon selesaikan installasi di layar berikutnya, lalu restart aplikasi.',
+        );
+      }
+
+      // Handle specific errors
+      if (result.message.contains('permission') ||
+          result.type.name == 'no_permission_to_open_file') {
+        return ApkInstallResult(
+          success: false,
+          error: 'Izin install ditolak. Silakan aktifkan di Settings.',
+          errorCode: 'PERMISSION_DENIED',
+        );
+      }
+
+      if (result.type.name == 'activity_not_found') {
+        return ApkInstallResult(
+          success: false,
+          error: 'Installer APK tidak ditemukan. Coba restart aplikasi.',
+          errorCode: 'ACTIVITY_NOT_FOUND',
+        );
+      }
+
+      return ApkInstallResult(
+        success: false,
+        error: 'Gagal membuka installer: ${result.message}',
+        errorCode: 'INSTALL_FAILED',
+      );
+    } catch (e, stackTrace) {
+      debugPrint('[ApkUpdate] Install error: $e');
+      debugPrint('[ApkUpdate] StackTrace: $stackTrace');
+      return ApkInstallResult(
+        success: false,
+        error: 'Terjadi kesalahan saat membuka installer: $e',
+        errorCode: 'UNKNOWN',
+      );
+    }
+  }
+
+  /// Combined download and install in one call
+  /// Returns success when download is complete and installer is launched
+  Future<ApkUpdateResult> downloadAndInstall({
+    required String downloadUrl,
+    required String version,
+    required String md5,
+    String? fileName,
+    Function(double progress, String statusText)? onProgress,
+  }) async {
+    // Step 1: Download
+    onProgress?.call(0, 'Memulai download...');
+
+    final downloadResult = await downloadApk(
+      downloadUrl: downloadUrl,
+      version: version,
+      md5: md5,
+      fileName: fileName,
+      onProgress: onProgress,
+    );
+
+    if (!downloadResult.success) {
+      return ApkUpdateResult(
+        success: false,
+        error: downloadResult.error,
+        errorCode: downloadResult.errorCode,
+      );
+    }
+
+    // Download complete, now we need user to confirm install
+    // Return special status indicating download is done and we need user action
+    return ApkUpdateResult(
+      success: true,
+      downloadComplete: true,
+      filePath: downloadResult.filePath,
+      needsUserConfirmation: true,
+      message: downloadResult.message,
+    );
+  }
+
   /// Calculate MD5 hash of file
   Future<String> _calculateMd5(File file) async {
     try {
       final bytes = await file.readAsBytes();
-      // Use crypto package for proper MD5
       final digest = md5.convert(bytes);
       return digest.toString();
     } catch (e) {
@@ -242,20 +319,49 @@ class ApkUpdateService {
       return '';
     }
   }
-
-  /// Open app settings for permission management
-  Future<void> openAppSettings() async {
-    await openAppSettings();
-  }
 }
 
-/// Result from APK update operation
+/// Result from APK download operation
+class ApkDownloadResult {
+  final bool success;
+  final String? error;
+  final String? errorCode;
+  final String? filePath;
+  final String? message;
+
+  ApkDownloadResult({
+    required this.success,
+    this.error,
+    this.errorCode,
+    this.filePath,
+    this.message,
+  });
+}
+
+/// Result from APK install operation
+class ApkInstallResult {
+  final bool success;
+  final String? error;
+  final String? errorCode;
+  final String? message;
+
+  ApkInstallResult({
+    required this.success,
+    this.error,
+    this.errorCode,
+    this.message,
+  });
+}
+
+/// Result from complete APK update operation
 class ApkUpdateResult {
   final bool success;
   final String? error;
   final String? errorCode;
   final String? filePath;
   final String? message;
+  final bool downloadComplete;
+  final bool needsUserConfirmation;
 
   ApkUpdateResult({
     required this.success,
@@ -263,13 +369,7 @@ class ApkUpdateResult {
     this.errorCode,
     this.filePath,
     this.message,
+    this.downloadComplete = false,
+    this.needsUserConfirmation = false,
   });
-
-  @override
-  String toString() {
-    if (success) {
-      return 'ApkUpdateResult: SUCCESS - $message';
-    }
-    return 'ApkUpdateResult: FAILED - $error (code: $errorCode)';
-  }
 }

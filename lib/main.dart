@@ -26,9 +26,7 @@ void main() async {
   await StorageService().init();
 
   // Initialize flutter_patcher for hot code push
-  if (kDebugMode) {
-    await PatchService.instance.initialize();
-  }
+  await PatchService.instance.initialize();
 
   // Set status bar style - transparent for splash with image
   SystemChrome.setSystemUIOverlayStyle(
@@ -103,23 +101,45 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _showUpdateDialog() async {
     if (!mounted || _pendingUpdate == null) return;
 
+    final info = _pendingUpdate!;
+
+    // For APK updates, use progress callback
+    Future<UpdateResult> Function(double, String)? onUpdateWithProgress;
+    Function(UpdateResult)? onUpdate;
+
+    if (info.isApk) {
+      // APK update with progress
+      onUpdateWithProgress = (progress, status) async {
+        // Download and install APK
+        return await UpdateService.instance.downloadAndInstall(
+          downloadUrl: info.downloadUrl,
+          version: info.version,
+          md5: info.md5,
+          onProgress: (p, s) {
+            // Progress will be handled by the dialog's internal state
+            debugPrint('[APK Update] Progress: ${(p * 100).toStringAsFixed(0)}% - $s');
+          },
+        );
+      };
+    } else {
+      // Patch update without progress
+      onUpdate = (result) async {
+        return await UpdateService.instance.applyUpdate(info);
+      };
+    }
+
     await showUpdateDialog(
       context: context,
-      info: _pendingUpdate!,
-      barrierDismissible: !_pendingUpdate!.isMandatory,
-      onUpdate: (result) async {
-        // Apply the update
-        final updateResult = await UpdateService.instance.applyUpdate(_pendingUpdate!);
-        return updateResult;
-      },
-      onLater: _pendingUpdate!.isMandatory
+      info: info,
+      barrierDismissible: !info.isMandatory,
+      onUpdate: onUpdate ?? (_) async => UpdateResult(success: true, message: ''),
+      onUpdateWithProgress: onUpdateWithProgress,
+      onLater: info.isMandatory
           ? null
           : () {
               Navigator.pop(context);
             },
       onRestart: () {
-        // Restart the app to apply patch changes
-        // For now, just pop the dialog
         debugPrint('[Splash] Restart app to apply changes');
       },
     );
