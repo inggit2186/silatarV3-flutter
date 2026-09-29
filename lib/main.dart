@@ -9,6 +9,8 @@ import 'core/theme/neo_mirai_theme.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/api_service.dart';
 import 'core/services/patch_service.dart';
+import 'core/services/update_service.dart';
+import 'core/widgets/update_dialog.dart';
 import 'core/models/user_model.dart';
 import 'core/providers/user_provider.dart';
 import 'features/welcome/welcome_page.dart';
@@ -24,7 +26,6 @@ void main() async {
   await StorageService().init();
 
   // Initialize flutter_patcher for hot code push
-  // Only in debug mode - production uses patch server
   if (kDebugMode) {
     await PatchService.instance.initialize();
   }
@@ -66,17 +67,62 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  bool _checkedUpdate = false;
+  UpdateInfo? _pendingUpdate;
+
   @override
   void initState() {
     super.initState();
-    _navigateToWelcome();
+    _initializeAndNavigate();
   }
 
-  Future<void> _navigateToWelcome() async {
-    await Future.delayed(const Duration(milliseconds: 3000));
+  Future<void> _initializeAndNavigate() async {
+    // Check for updates in background (only in release mode)
+    if (!kDebugMode && !_checkedUpdate) {
+      _checkedUpdate = true;
+      _pendingUpdate = await UpdateService.instance.checkForUpdate();
+    }
+
+    await Future.delayed(const Duration(milliseconds: 2000));
 
     if (!mounted) return;
 
+    // Show update dialog if update available
+    if (_pendingUpdate != null && _pendingUpdate!.hasUpdate) {
+      await _showUpdateDialog();
+    }
+
+    // Continue navigation
+    if (!mounted) return;
+    await _navigateToDestination();
+  }
+
+  Future<void> _showUpdateDialog() async {
+    if (!mounted || _pendingUpdate == null) return;
+
+    await showUpdateDialog(
+      context: context,
+      info: _pendingUpdate!,
+      barrierDismissible: !_pendingUpdate!.isMandatory,
+      onUpdate: (result) async {
+        // Apply the update
+        final updateResult = await UpdateService.instance.applyUpdate(_pendingUpdate!);
+        return updateResult;
+      },
+      onLater: _pendingUpdate!.isMandatory
+          ? null
+          : () {
+              Navigator.pop(context);
+            },
+      onRestart: () {
+        // Restart the app to apply patch changes
+        // For now, just pop the dialog
+        debugPrint('[Splash] Restart app to apply changes');
+      },
+    );
+  }
+
+  Future<void> _navigateToDestination() async {
     // Check if user is logged in (remember me)
     final isLoggedIn = await StorageService().isLoggedIn();
 

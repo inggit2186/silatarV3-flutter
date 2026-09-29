@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
+import '../../core/services/update_service.dart';
 import '../login/login_page.dart';
 
 class WelcomePage extends StatelessWidget {
@@ -68,94 +69,120 @@ class WelcomePage extends StatelessWidget {
   }
 
   Widget _buildStartButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: GestureDetector(
-        onTap: () => _navigateToLogin(context),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            vertical: Responsive.spacing(14),
-            horizontal: Responsive.spacing(24),
-          ),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                Color(0xFFD4AF37), // Gold
-                Color(0xFFB8860B), // Dark Goldenrod
-                Color(0xFFDAA520), // Goldenrod
-              ],
-            ),
-            borderRadius: BorderRadius.circular(Responsive.radius(50)),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Color(0xFFDAA520).withValues(alpha: 0.4),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-                spreadRadius: 1,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: GestureDetector(
+            onTap: () => _navigateToLogin(context),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                vertical: Responsive.spacing(14),
+                horizontal: Responsive.spacing(24),
               ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Text with futuristic style
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
                   colors: [
-                    Colors.white,
-                    Color(0xFFFFF8DC), // Cornsilk
-                    Colors.white,
+                    Color(0xFFD4AF37), // Gold
+                    Color(0xFFB8860B), // Dark Goldenrod
+                    Color(0xFFDAA520), // Goldenrod
                   ],
-                  stops: [0.0, 0.5, 1.0],
-                ).createShader(bounds),
-                child: Text(
-                  'MULAI',
-                  style: TextStyle(
-                    fontFamily: 'Chakra Petch',
-                    fontSize: Responsive.fontSize(18),
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    letterSpacing: 8,
+                ),
+                borderRadius: BorderRadius.circular(Responsive.radius(50)),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFFDAA520).withValues(alpha: 0.4),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                    spreadRadius: 1,
                   ),
-                ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
-
-              const SizedBox(width: 12),
-
-              // Arrow icon with glow
-              Container(
-                padding: EdgeInsets.all(Responsive.radius(8)),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      blurRadius: 6,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Text with futuristic style
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [
+                        Colors.white,
+                        Color(0xFFFFF8DC), // Cornsilk
+                        Colors.white,
+                      ],
+                      stops: [0.0, 0.5, 1.0],
+                    ).createShader(bounds),
+                    child: Text(
+                      'MULAI',
+                      style: TextStyle(
+                        fontFamily: 'Chakra Petch',
+                        fontSize: Responsive.fontSize(18),
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 8,
+                      ),
                     ),
-                  ],
-                ),
-                child: Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Colors.white,
-                  size: Responsive.iconSize(18),
-                ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Arrow icon with glow
+                  Container(
+                    padding: EdgeInsets.all(Responsive.radius(8)),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_rounded,
+                      color: Colors.white,
+                      size: Responsive.iconSize(18),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+
+        // Version text
+        const SizedBox(height: 12),
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: Responsive.spacing(12),
+            vertical: Responsive.spacing(4),
+          ),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(Responsive.radius(12)),
+          ),
+          child: Text(
+            'Versi Aplikasi : v${UpdateService.currentVersion} (${UpdateService.currentVersionCode})',
+            style: TextStyle(
+              fontSize: Responsive.fontSize(10),
+              color: Colors.white.withValues(alpha: 0.6),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     )
         .animate()
         .fadeIn(delay: 300.ms, duration: 600.ms)

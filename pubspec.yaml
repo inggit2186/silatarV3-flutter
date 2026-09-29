@@ -48,6 +48,10 @@ dependencies:
   # Hot Code Push (flutter_patcher)
   flutter_patcher: ^0.1.4
 
+  # APK Update (install from app)
+  open_file: ^3.3.2
+  permission_handler: ^11.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
