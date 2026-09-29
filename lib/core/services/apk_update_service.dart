@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:open_file/open_file.dart';
@@ -233,23 +234,13 @@ class ApkUpdateService {
   Future<String> _calculateMd5(File file) async {
     try {
       final bytes = await file.readAsBytes();
-      final digest = await compute(_computeMd5, bytes);
-      return digest;
+      // Use crypto package for proper MD5
+      final digest = md5.convert(bytes);
+      return digest.toString();
     } catch (e) {
       debugPrint('[ApkUpdate] MD5 calculation error: $e');
       return '';
     }
-  }
-
-  /// Compute MD5 in isolate
-  static String _computeMd5(List<int> bytes) {
-    // Simple MD5 implementation for Dart
-    // For production, use crypto package
-    int hash = 0;
-    for (var byte in bytes) {
-      hash = ((hash << 5) - hash + byte) & 0xFFFFFFFF;
-    }
-    return hash.toRadixString(16).padLeft(8, '0');
   }
 
   /// Open app settings for permission management

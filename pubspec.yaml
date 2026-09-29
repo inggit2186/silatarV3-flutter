@@ -52,6 +52,9 @@ dependencies:
   open_file: ^3.3.2
   permission_handler: ^11.3.0
 
+  # Crypto for MD5
+  crypto: ^3.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
