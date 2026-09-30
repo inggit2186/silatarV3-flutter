@@ -5,13 +5,15 @@ class AppVersion {
   /// Set by build.bat when building new APK
   static const String version = '2.0.1';
 
-  /// App version code (integer for logic/DB/comparison)
-  /// ALWAYS INCREMENT this when building new APK release - NEVER RESET
+  /// App version code (integer for PATCH matching)
+  /// RESET per version (e.g., 2.0.0 → 2.0.1 resets to 1)
   /// flutter_patcher CANNOT change this (compiled to libapp.so)
-  /// This is a GLOBAL counter - 2.0.1 should have higher code than 2.0.0
+  /// Used to match patches with the same base APK version
   static const int appVersionCode = 1;
 
-  /// Build number (same as appVersionCode)
+  /// Build number (GLOBAL counter, never resets)
+  /// Used for APK update detection - increment every build
+  /// Backend checks: build_number > user's build_number
   static const int buildNumber = 3;
 
   /// Full version string: major.version.patchCount

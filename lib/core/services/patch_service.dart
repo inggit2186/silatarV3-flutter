@@ -150,6 +150,10 @@ class PatchService {
   /// Returns AppVersion.appVersionCode
   int get currentVersionCode => AppVersion.appVersionCode;
 
+  /// Get current buildNumber (sync getter)
+  /// Returns AppVersion.buildNumber - used for APK update detection
+  int get buildNumber => AppVersion.buildNumber;
+
   /// Get current version string (sync getter)
   /// Returns full version with patch count
   String get currentVersion => getFullVersion();

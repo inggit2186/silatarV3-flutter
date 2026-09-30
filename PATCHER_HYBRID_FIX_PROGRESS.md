@@ -207,16 +207,34 @@ build.bat 2.0.1      ← appVersionCode reset ke 1, buildNumber increment
 
 ## Changelog
 
-### 2026-09-30 (Critical Fix - appVersionCode Reset Bug)
-- **ROOT CAUSE**: build.bat resets appVersionCode to 1 when version string changes!
-  - APK 2.0.0 → appVersionCode = 1, 2, 3 (incrementing)
-  - APK 2.0.1 → appVersionCode = 1 (RESET!) ← Bug!
-- **Backend checks**: `version_code > currentVersionCode`
-  - User has app with appVersionCode=1, uploads APK 2.0.1 with appVersionCode=1
-  - Query: 1 > 1 = FALSE → No update detected ← Bug!
-- **FIX**: Removed the reset logic from build.bat
-  - appVersionCode now ALWAYS INCREMENT, never reset
-  - Line 20: `$na = [int]$a + 1` (always increment)
+### 2026-09-30 (Build Number Fix)
+- **CORRECT LOGIC**: User clarifies that appVersionCode SHOULD reset per version
+- **Real solution**: Use `buildNumber` for APK update detection (never resets)
+- **Patch updates**: Use `version` + `appVersionCode` + `patch_count`
+- **APK updates**: Use `build_number`
+
+Changes:
+1. Migration: Added `build_number` column to `app_patches`
+2. AppPatch model: Added `build_number` field, new method `getAvailableApkUpdateByBuildNumber()`
+3. AppPatchController: Updated to check by `build_number` for APK, by `version_code`+`patch_count` for patches
+4. Flutter PatchService: Added `buildNumber` getter
+5. Flutter UpdateService: Now sends `build_number` to backend
+
+### 2026-09-30 (Build Number - CORRECT LOGIC)
+- **REVERTED**: appVersionCode memang di-reset per versi (benar!)
+- **SOLUSI**: APK update detection gunakan `build_number` (tidak pernah reset)
+- **Patch Detection**: `version_code` + `patch_count` (appVersionCode per versi)
+
+**Logic yang benar:**
+```
+APK 2.0.0 build1 → appVersionCode=1, buildNumber=1
+APK 2.0.0 build2 → appVersionCode=2, buildNumber=2
+APK 2.0.1 build1 → appVersionCode=1, buildNumber=3  ← appVersionCode reset
+
+Backend:
+- APK check: build_number > user's build_number
+- Patch check: version_code == user's version_code AND patch_count > user's patch_count
+```
 
 ### 2026-09-30 (Bug Fix - Update Dialog & APK Download)
 - **Update Dialog**: Simplified to show only update version, not current version

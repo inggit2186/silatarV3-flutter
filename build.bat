@@ -9,15 +9,17 @@ echo.
 set "NEW_VERSION=%~1"
 
 REM =============================================
-REM IMPORTANT: appVersionCode should ALWAYS INCREMENT, never reset
-REM This is a GLOBAL counter used for update detection
+REM appVersionCode: Reset per version (e.g., 2.0.0 → 2.0.1 resets to 1)
+REM buildNumber: ALWAYS INCREMENT (global counter for APK update detection)
 REM =============================================
 echo $n = '%NEW_VERSION%' > build.ps1
 echo $c = Get-Content 'lib\core\config\app_version.dart' -Raw >> build.ps1
 echo $v = [regex]::Match($c, "version\s*=\s*'([^']+)'").Groups[1].Value >> build.ps1
 echo $a = [regex]::Match($c, 'appVersionCode\s*=\s*(\d+);').Groups[1].Value >> build.ps1
 echo $b = [regex]::Match($c, 'buildNumber\s*=\s*(\d+);').Groups[1].Value >> build.ps1
-echo $na = [int]$a + 1 >> build.ps1
+REM appVersionCode: reset if version changes, else increment
+echo if ($n -eq $v) { $na = [int]$a + 1 } else { $na = 1 } >> build.ps1
+REM buildNumber: always increment
 echo $nb = [int]$b + 1 >> build.ps1
 echo $c = $c -replace "version = '[^']+'", "version = '$n'" >> build.ps1
 echo $c = $c -replace "appVersionCode = \d+;", "appVersionCode = $na;" >> build.ps1
@@ -113,7 +115,7 @@ dir "output\%FINAL_OUT%"
 echo.
 echo Summary:
 echo   Version:        v%NEW_VERSION%
-echo   AppVersionCode: %FINAL_APP%  ^(global, always increment^)
-echo   BuildNumber:    %FINAL_BUILD%  ^(global^)
+echo   AppVersionCode: %FINAL_APP%  ^(per-version, reset saat versi beda^)
+echo   BuildNumber:    %FINAL_BUILD%  ^(global, selalu increment^)
 echo.
 pause

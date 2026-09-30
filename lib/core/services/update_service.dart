@@ -54,10 +54,11 @@ class UpdateService {
       final version = customVersion ?? PatchService.instance.currentVersion;
       final versionCode = customVersionCode ?? PatchService.instance.currentVersionCode;
       final patchCount = PatchService.instance.patchCount;
+      final buildNumber = PatchService.instance.buildNumber;
 
       debugPrint('[UpdateService] ==================================');
       debugPrint('[UpdateService] Checking for updates...');
-      debugPrint('[UpdateService] Current: v$version ($versionCode), patchCount=$patchCount');
+      debugPrint('[UpdateService] Current: v$version ($versionCode), patchCount=$patchCount, buildNumber=$buildNumber');
       debugPrint('[UpdateService] API URL: $_checkUrl');
       debugPrint('[UpdateService] ==================================');
 
@@ -67,6 +68,7 @@ class UpdateService {
           'version': version,
           'patch_count': patchCount,
           'app_version_code': versionCode,
+          'build_number': buildNumber,
         },
         options: Options(
           headers: {'Accept': 'application/json'},
@@ -335,6 +337,7 @@ class UpdateInfo {
   final UpdateType updateType;
   final String version;
   final int versionCode;
+  final int buildNumber;
   final String downloadUrl;
   final String? patchUrl;
   final String md5;
@@ -349,6 +352,7 @@ class UpdateInfo {
     required this.updateType,
     required this.version,
     required this.versionCode,
+    this.buildNumber = 0,
     required this.downloadUrl,
     this.patchUrl,
     required this.md5,
@@ -423,6 +427,7 @@ class UpdateInfo {
       updateType: type,
       version: json['latestVersion'] ?? json['version'] ?? '1.0.0',
       versionCode: json['version_code'] ?? 1,
+      buildNumber: json['build_number'] ?? json['version_code'] ?? 0,
       downloadUrl: downloadUrl,
       patchUrl: json['patchUrl']?.toString(),
       md5: json['md5'] ?? '',
