@@ -55,9 +55,30 @@ class _UpdateDialogState extends State<UpdateDialog> {
   String _statusText = 'Menunggu...';
   UpdateResult? _result;
   String? _downloadedFilePath;
+  bool _autoStarted = false; // Track if auto-start was triggered for mandatory patch
 
   bool get _isPatch => widget.info.isPatch;
   bool get _isMandatory => widget.info.isMandatory;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-start mandatory patch updates immediately
+    if (_isPatch && _isMandatory && !_autoStarted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _autoStartIfNeeded();
+      });
+    }
+  }
+
+  void _autoStartIfNeeded() {
+    // Only auto-start for mandatory patch updates in idle state
+    if (_isPatch && _isMandatory && _status == UpdateDialogStatus.idle && !_autoStarted) {
+      _autoStarted = true;
+      debugPrint('[UpdateDialog] Auto-starting mandatory patch update...');
+      _startUpdate();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -707,6 +728,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildIdleActions() {
+    // For mandatory patch updates that are auto-starting, show progress instead of buttons
+    if (_isPatch && _isMandatory && _autoStarted) {
+      return _buildAutoUpdateProgress();
+    }
+
     return Row(
       children: [
         if (!_isMandatory && widget.onLater != null) ...[
@@ -760,6 +786,55 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 ),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build progress widget for auto-updating mandatory patches
+  Widget _buildAutoUpdateProgress() {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(Responsive.spacing(16)),
+          decoration: BoxDecoration(
+            color: NeoMiraiColors.gold.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(Responsive.radius(16)),
+            border: Border.all(
+              color: NeoMiraiColors.gold.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(NeoMiraiColors.gold),
+                ),
+              ),
+              SizedBox(width: Responsive.spacing(12)),
+              Expanded(
+                child: Text(
+                  'Update wajib sedang diterapkan...',
+                  style: TextStyle(
+                    fontSize: Responsive.fontSize(13),
+                    color: NeoMiraiColors.gold,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: Responsive.spacing(8)),
+        Text(
+          'Mohon tunggu, janganmatikan aplikasi',
+          style: TextStyle(
+            fontSize: Responsive.fontSize(11),
+            color: NeoMiraiColors.inkSoft,
           ),
         ),
       ],
@@ -886,6 +961,158 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildSuccessActions() {
+    // For mandatory patch updates, show success info with version and changelog
+    if (_isPatch && _isMandatory) {
+      return Column(
+        children: [
+          // Success info card with version and changelog
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(Responsive.spacing(16)),
+            decoration: BoxDecoration(
+              color: NeoMiraiColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(Responsive.radius(16)),
+              border: Border.all(
+                color: NeoMiraiColors.success.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 24,
+                      color: NeoMiraiColors.success,
+                    ),
+                    SizedBox(width: Responsive.spacing(8)),
+                    Text(
+                      'Update Berhasil!',
+                      style: TextStyle(
+                        fontSize: Responsive.fontSize(16),
+                        fontWeight: FontWeight.bold,
+                        color: NeoMiraiColors.success,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: Responsive.spacing(12)),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Responsive.spacing(10),
+                    vertical: Responsive.spacing(4),
+                  ),
+                  decoration: BoxDecoration(
+                    color: NeoMiraiColors.ink.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(Responsive.radius(12)),
+                  ),
+                  child: Text(
+                    'v${widget.info.version}',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(13),
+                      fontWeight: FontWeight.w700,
+                      color: NeoMiraiColors.ink,
+                    ),
+                  ),
+                ),
+                if (widget.info.changelog.isNotEmpty) ...[
+                  SizedBox(height: Responsive.spacing(12)),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(Responsive.spacing(12)),
+                    decoration: BoxDecoration(
+                      color: NeoMiraiColors.paper.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(Responsive.radius(12)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Apa yang baru:',
+                          style: TextStyle(
+                            fontSize: Responsive.fontSize(11),
+                            fontWeight: FontWeight.w600,
+                            color: NeoMiraiColors.inkSoft,
+                          ),
+                        ),
+                        SizedBox(height: Responsive.spacing(4)),
+                        Text(
+                          widget.info.changelog,
+                          style: TextStyle(
+                            fontSize: Responsive.fontSize(12),
+                            color: NeoMiraiColors.ink,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                SizedBox(height: Responsive.spacing(12)),
+                Container(
+                  padding: EdgeInsets.all(Responsive.spacing(10)),
+                  decoration: BoxDecoration(
+                    color: NeoMiraiColors.gold.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(Responsive.radius(12)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.refresh_rounded,
+                        size: 18,
+                        color: NeoMiraiColors.gold,
+                      ),
+                      SizedBox(width: Responsive.spacing(8)),
+                      Expanded(
+                        child: Text(
+                          'Restart aplikasi untuk melihat perubahan',
+                          style: TextStyle(
+                            fontSize: Responsive.fontSize(11),
+                            color: NeoMiraiColors.gold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: Responsive.spacing(16)),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                widget.onRestart?.call();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: NeoMiraiColors.success,
+                foregroundColor: NeoMiraiColors.rice,
+                padding: EdgeInsets.symmetric(vertical: Responsive.spacing(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Responsive.radius(12)),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.refresh_rounded),
+                  SizedBox(width: Responsive.spacing(8)),
+                  const Text(
+                    'Restart Aplikasi',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Default success actions for non-mandatory updates
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -963,6 +1190,32 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
   }
 
+  /// Simulate progress updates for patch updates
+  void _simulatePatchProgress() {
+    // Simulate progress for better UX
+    _updateProgress(0.1, 'Mengunduh patch...');
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted && _status == UpdateDialogStatus.applying) {
+        _updateProgress(0.3, 'Memverifikasi integritas...');
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted && _status == UpdateDialogStatus.applying) {
+        _updateProgress(0.5, 'Menerapkan perubahan...');
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted && _status == UpdateDialogStatus.applying) {
+        _updateProgress(0.7, 'Menyelesaikan instalasi...');
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted && _status == UpdateDialogStatus.applying) {
+        _updateProgress(0.9, 'Menyimpan konfigurasi...');
+      }
+    });
+  }
+
   Future<void> _startUpdate() async {
     setState(() {
       _status = widget.info.isPatch
@@ -1001,6 +1254,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
       }
       // For patch updates
       else if (widget.info.isPatch) {
+        // Start progress simulation for patch update
+        _simulatePatchProgress();
+
         final result = await widget.onUpdate(UpdateResult(
           success: false,
           message: '',
@@ -1012,12 +1268,17 @@ class _UpdateDialogState extends State<UpdateDialog> {
         if (result.success) {
           setState(() {
             _status = UpdateDialogStatus.success;
+            _progress = 1.0;
+            _statusText = 'Update berhasil!';
           });
 
-          await Future.delayed(const Duration(seconds: 2));
-          if (mounted) {
-            Navigator.pop(context);
-            widget.onRestart?.call();
+          // Auto-restart after short delay for mandatory updates
+          if (_isMandatory) {
+            await Future.delayed(const Duration(seconds: 3));
+            if (mounted) {
+              Navigator.pop(context);
+              widget.onRestart?.call();
+            }
           }
         } else {
           setState(() {
@@ -1076,8 +1337,18 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
     setState(() {
       _status = UpdateDialogStatus.launching;
-      _statusText = 'Membuka installer...';
+      _statusText = 'Membersihkan data lama...';
     });
+
+    // CRITICAL: Clear flutter_patcher BEFORE APK install
+    // This ensures the new APK starts fresh without stale patches
+    try {
+      await PatchService.instance.prepareForApkUpdate();
+      debugPrint('[UpdateDialog] Patch data cleared, opening installer...');
+    } catch (e) {
+      debugPrint('[UpdateDialog] Failed to clear patch data: $e');
+      // Continue anyway - APK install should still work
+    }
 
     // Notify parent that mandatory install was triggered
     if (_isMandatory && widget.onMandatoryInstallTriggered != null) {
