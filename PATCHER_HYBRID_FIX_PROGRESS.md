@@ -73,6 +73,7 @@ Reads `appVersionCode` from app_version.dart automatically, asks for patch numbe
 - [x] Fix `UpdateService.checkForUpdate()` - was not sending `patch_count` to backend
 - [x] Fix update dialog - only show update version, not current version
 - [x] Fix APK download URL - backend was returning local path instead of download endpoint
+- [x] Fix build.bat - appVersionCode was being reset when version changed!
 - [ ] Test flow: install APK → patch → APK upgrade → verify version is correct
 
 ### In Progress
@@ -206,6 +207,17 @@ build.bat 2.0.1      ← appVersionCode reset ke 1, buildNumber increment
 
 ## Changelog
 
+### 2026-09-30 (Critical Fix - appVersionCode Reset Bug)
+- **ROOT CAUSE**: build.bat resets appVersionCode to 1 when version string changes!
+  - APK 2.0.0 → appVersionCode = 1, 2, 3 (incrementing)
+  - APK 2.0.1 → appVersionCode = 1 (RESET!) ← Bug!
+- **Backend checks**: `version_code > currentVersionCode`
+  - User has app with appVersionCode=1, uploads APK 2.0.1 with appVersionCode=1
+  - Query: 1 > 1 = FALSE → No update detected ← Bug!
+- **FIX**: Removed the reset logic from build.bat
+  - appVersionCode now ALWAYS INCREMENT, never reset
+  - Line 20: `$na = [int]$a + 1` (always increment)
+
 ### 2026-09-30 (Bug Fix - Update Dialog & APK Download)
 - **Update Dialog**: Simplified to show only update version, not current version
 - **APK Download Fix**: Backend `AppPatchController` was setting `apk_url` to local file path
@@ -295,9 +307,9 @@ build.bat 2.0.1      ← appVersionCode reset ke 1, buildNumber increment
 ### Flutter App (c:\silatar_v2)
 | File | Changes |
 |------|---------|
-| `build.bat` | Auto-increment appVersionCode & buildNumber |
+| `build.bat` | appVersionCode ALWAYS increment (never reset), buildNumber always increment |
 | `generate_patch.bat` | Auto-increment patch count per appVersionCode |
-| `lib/core/config/app_version.dart` | Hybrid versioning fields |
+| `lib/core/config/app_version.dart` | Hybrid versioning fields, updated comments |
 | `lib/core/services/patch_service.dart` | Added getCurrentVersionInfo(), currentVersionCode, currentVersion, fixed getFullVersion() |
 | `lib/core/services/update_service.dart` | Updated to send patch_count to backend |
 | `lib/core/widgets/update_dialog.dart` | Simplified to show only update version |
