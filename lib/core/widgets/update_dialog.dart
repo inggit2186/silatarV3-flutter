@@ -360,74 +360,38 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Widget _buildIdleContent() {
     return Column(
       children: [
-        // Info versi saat ini vs versi yang diinstall
-        FutureBuilder<({String version, int versionCode})>(
-          future: PatchService.instance.getCurrentVersionInfo(),
-          builder: (context, snapshot) {
-            final currentVersion = snapshot.data?.version ?? AppVersion.version;
-            final currentBuild = snapshot.data?.versionCode ?? AppVersion.appVersionCode;
-            return Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: Responsive.spacing(12),
-                vertical: Responsive.spacing(6),
+        // Versi update saja
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: Responsive.spacing(12),
+            vertical: Responsive.spacing(6),
+          ),
+          decoration: BoxDecoration(
+            color: NeoMiraiColors.gold.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(Responsive.radius(8)),
+            border: Border.all(
+              color: NeoMiraiColors.gold.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.arrow_upward_rounded,
+                size: 14,
+                color: NeoMiraiColors.gold,
               ),
-              decoration: BoxDecoration(
-                color: NeoMiraiColors.ink.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(Responsive.radius(8)),
-                border: Border.all(
-                  color: NeoMiraiColors.line.withValues(alpha: 0.3),
+              SizedBox(width: Responsive.spacing(6)),
+              Text(
+                'Update ke: v${widget.info.version}',
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(11),
+                  fontWeight: FontWeight.w700,
+                  color: NeoMiraiColors.gold,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.phone_android_rounded,
-                    size: 14,
-                    color: NeoMiraiColors.inkSoft,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Sekarang: ',
-                    style: TextStyle(
-                      fontSize: Responsive.fontSize(11),
-                      color: NeoMiraiColors.inkSoft,
-                    ),
-                  ),
-                  Text(
-                    'v$currentVersion (build $currentBuild)',
-                    style: TextStyle(
-                      fontSize: Responsive.fontSize(11),
-                      fontWeight: FontWeight.w600,
-                      color: NeoMiraiColors.ink,
-                    ),
-                  ),
-                  SizedBox(width: Responsive.spacing(12)),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 14,
-                    color: NeoMiraiColors.gold,
-                  ),
-                  SizedBox(width: Responsive.spacing(6)),
-                  Text(
-                    'Update ke: ',
-                    style: TextStyle(
-                      fontSize: Responsive.fontSize(11),
-                      color: NeoMiraiColors.inkSoft,
-                    ),
-                  ),
-                  Text(
-                    'v${widget.info.version} (build ${widget.info.versionCode})',
-                    style: TextStyle(
-                      fontSize: Responsive.fontSize(11),
-                      fontWeight: FontWeight.w700,
-                      color: NeoMiraiColors.gold,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+            ],
+          ),
         ),
         SizedBox(height: Responsive.spacing(12)),
         Container(

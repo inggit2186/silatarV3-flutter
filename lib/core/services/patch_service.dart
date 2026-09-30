@@ -127,7 +127,7 @@ class PatchService {
 
   /// Get full version string: major.version.patchCount
   String getFullVersion() {
-    return '2.${AppVersion.version}.$_patchCount';
+    return '${AppVersion.version}.$_patchCount';
   }
 
   /// Get version info untuk display

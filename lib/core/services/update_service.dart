@@ -51,12 +51,13 @@ class UpdateService {
       // Ambil versi efektif yang sedang berjalan (termasuk patch), bukan
       // base APK version. Agar server tidak menawarkan patch yang sudah
       // di-apply.
-      final version = customVersion ?? currentVersion;
-      final versionCode = customVersionCode ?? await getCurrentVersionCode();
+      final version = customVersion ?? PatchService.instance.currentVersion;
+      final versionCode = customVersionCode ?? PatchService.instance.currentVersionCode;
+      final patchCount = PatchService.instance.patchCount;
 
       debugPrint('[UpdateService] ==================================');
       debugPrint('[UpdateService] Checking for updates...');
-      debugPrint('[UpdateService] Current: v$version ($versionCode)');
+      debugPrint('[UpdateService] Current: v$version ($versionCode), patchCount=$patchCount');
       debugPrint('[UpdateService] API URL: $_checkUrl');
       debugPrint('[UpdateService] ==================================');
 
@@ -64,7 +65,8 @@ class UpdateService {
         _checkUrl,
         queryParameters: {
           'version': version,
-          'version_code': versionCode,
+          'patch_count': patchCount,
+          'app_version_code': versionCode,
         },
         options: Options(
           headers: {'Accept': 'application/json'},
