@@ -34,7 +34,7 @@ REM Trim whitespace
 set CURRENT_VERSION=%CURRENT_VERSION: =%
 set APP_VERSION_CODE=%APP_VERSION_CODE: =%
 
-echo Current APK Info:
+echo [INFO] APK Info:
 echo   Version: %CURRENT_VERSION%
 echo   AppVersionCode: %APP_VERSION_CODE%
 echo.
@@ -42,37 +42,44 @@ echo.
 REM =============================================
 REM PATCH COUNT MANAGEMENT
 REM =============================================
-REM Store patch count per appVersionCode in a simple file
 set "PATCH_COUNT_FILE=patch_counts.txt"
 
 REM Check if we have existing patch count for this appVersionCode
-set "FOUND_PATCH_COUNT="
+set "CURRENT_PATCH_COUNT=0"
 
 if exist "%PATCH_COUNT_FILE%" (
     for /f "tokens=1,2 delims=," %%A in ('findstr /C:"%APP_VERSION_CODE%," %PATCH_COUNT_FILE%') do (
         if "%%A"=="%APP_VERSION_CODE%" (
-            set "FOUND_PATCH_COUNT=%%B"
+            set "CURRENT_PATCH_COUNT=%%B"
         )
     )
 )
 
-if defined FOUND_PATCH_COUNT (
-    set /a PATCH_NUM = FOUND_PATCH_COUNT + 1
-    echo [INFO] Previous patches found for this version: %FOUND_PATCH_COUNT%
+echo [INFO] Current patch count for this version: %CURRENT_PATCH_COUNT%
+echo.
+
+if %CURRENT_PATCH_COUNT% GTR 0 (
+    set /a PATCH_NUM = CURRENT_PATCH_COUNT + 1
     echo [INFO] Auto-incrementing patch number to: %PATCH_NUM%
 ) else (
     set PATCH_NUM=1
-    echo [INFO] First patch for this version
-    echo [INFO] Patch number: %PATCH_NUM%
+    echo [INFO] First patch for this version. Starting at: %PATCH_NUM%
 )
 
 echo.
+echo [INPUT] Enter patch number (press Enter for auto %PATCH_NUM%):
+set /p USER_PATCH_NUM="> "
+
+if not "%USER_PATCH_NUM%"=="" (
+    set PATCH_NUM=%USER_PATCH_NUM%
+    echo [INFO] Using manual patch number: %PATCH_NUM%
+)
 
 REM Update patch count file
 if exist "%PATCH_COUNT_FILE%" (
     powershell -Command "(Get-Content '%PATCH_COUNT_FILE%' -Raw) -replace '%APP_VERSION_CODE%,\d+', '' | Set-Content '%PATCH_COUNT_FILE%'"
 )
-echo %APP_VERSION_CODE%,%PATCH_NUM% >> %PATCH_COUNT_FILE% 2>nul
+echo %APP_VERSION_CODE%,%PATCH_NUM%>> %PATCH_COUNT_FILE% 2>nul
 
 REM =============================================
 REM GENERATE PATCH INFO
@@ -81,9 +88,10 @@ set PATCH_VERSION=%CURRENT_VERSION%.%PATCH_NUM%
 set OUTPUT_NAME=silatar_v2_patch_%PATCH_VERSION%
 
 echo.
-echo Patch Info:
+echo [INFO] Patch Info:
 echo   Patch Version: %PATCH_VERSION%
 echo   AppVersionCode: %APP_VERSION_CODE%
+echo   Patch Count: %PATCH_NUM%
 echo   Output: output\%OUTPUT_NAME%.zip
 echo.
 
@@ -128,11 +136,11 @@ echo  Done!
 echo ============================================
 echo Output: output\%OUTPUT_NAME%.zip
 echo.
-echo Upload to backend with:
-echo   - version: %PATCH_VERSION%
-echo   - app_version_code: %APP_VERSION_CODE%
-echo   - patch_count: %PATCH_NUM%
+echo [BACKEND] Fill form with:
+echo   - Versi: %CURRENT_VERSION%
+echo   - Version Code: %APP_VERSION_CODE%
+echo   - Patch Count: %PATCH_NUM%
+echo   - Update Type: patch
 echo.
-echo Note: patch_count akan di-reset ke 1 jika user install APK baru
-echo       karena appVersionCode akan berubah.
+echo [NOTE] Patch count will reset to 0 when user installs new APK.
 pause
