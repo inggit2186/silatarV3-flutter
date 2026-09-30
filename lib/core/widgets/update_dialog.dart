@@ -988,7 +988,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     ),
                     SizedBox(width: Responsive.spacing(8)),
                     Text(
-                      'Update Berhasil!',
+                      'Update Berhasil',
                       style: TextStyle(
                         fontSize: Responsive.fontSize(16),
                         fontWeight: FontWeight.bold,
@@ -997,55 +997,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     ),
                   ],
                 ),
-                SizedBox(height: Responsive.spacing(12)),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: Responsive.spacing(10),
-                    vertical: Responsive.spacing(4),
-                  ),
-                  decoration: BoxDecoration(
-                    color: NeoMiraiColors.ink.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(Responsive.radius(12)),
-                  ),
-                  child: Text(
-                    'v${widget.info.version}',
-                    style: TextStyle(
-                      fontSize: Responsive.fontSize(13),
-                      fontWeight: FontWeight.w700,
-                      color: NeoMiraiColors.ink,
-                    ),
-                  ),
-                ),
                 if (widget.info.changelog.isNotEmpty) ...[
                   SizedBox(height: Responsive.spacing(12)),
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(Responsive.spacing(12)),
-                    decoration: BoxDecoration(
-                      color: NeoMiraiColors.paper.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(Responsive.radius(12)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Apa yang baru:',
-                          style: TextStyle(
-                            fontSize: Responsive.fontSize(11),
-                            fontWeight: FontWeight.w600,
-                            color: NeoMiraiColors.inkSoft,
-                          ),
-                        ),
-                        SizedBox(height: Responsive.spacing(4)),
-                        Text(
-                          widget.info.changelog,
-                          style: TextStyle(
-                            fontSize: Responsive.fontSize(12),
-                            color: NeoMiraiColors.ink,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    widget.info.changelog,
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(13),
+                      color: NeoMiraiColors.ink,
+                      height: 1.4,
                     ),
                   ),
                 ],
