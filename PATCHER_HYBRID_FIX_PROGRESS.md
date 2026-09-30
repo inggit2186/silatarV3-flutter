@@ -220,6 +220,21 @@ Changes:
 4. Flutter PatchService: Added `buildNumber` getter
 5. Flutter UpdateService: Now sends `build_number` to backend
 
+### 2026-09-30 (APK Upgrade Detection Fix)
+- **PROBLEM**: flutter_patcher stores patches in internal storage
+  - When APK is upgraded, Android MIGRATES this data
+  - Old patches still loaded after APK upgrade
+- **SOLUTION**: Use buildNumber for APK upgrade detection
+  - buildNumber always increments (never resets)
+  - Store buildNumber when patch is applied
+  - On startup: compare currentBuildNumber vs storedBuildNumber
+  - If different → APK was upgraded → rollback + clear state
+
+**Key changes:**
+- `_keyBuildNumberAtPatch`: Store buildNumber (not appVersionCode)
+- `_checkApkUpgrade()`: Compare buildNumber (not appVersionCode)
+- `checkAndApplyPatch()`: Save buildNumber when applying patch
+
 ### 2026-09-30 (Build Number - CORRECT LOGIC)
 - **REVERTED**: appVersionCode memang di-reset per versi (benar!)
 - **SOLUSI**: APK update detection gunakan `build_number` (tidak pernah reset)

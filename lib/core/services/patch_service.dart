@@ -10,14 +10,12 @@ import '../config/app_version.dart';
 /// Update kode Dart tanpa perlu reinstall APK
 ///
 /// Versioning: Hybrid approach
-/// - appVersionCode (integer): dari app_version.dart, tidak bisa diubah oleh patch
+/// - appVersionCode (integer): dari app_version.dart, di-reset per versi
+/// - buildNumber (integer): dari app_version.dart, selalu increment (global)
 /// - patchCount (integer): counter patch, disimpan di SharedPreferences
 ///
-/// Format version: major.version.patchCount
-/// Contoh:
-/// - APK 2.0.0 (appVersionCode=0, patchCount=0) → "2.0.0.0"
-/// - APK 2.0.0 + 2 patches (patchCount=2) → "2.0.0.2"
-/// - APK 2.0.1 (appVersionCode=1, patchCount=0) → "2.0.1.0"
+/// APK Upgrade Detection: Gunakan buildNumber (selalu increment)
+/// Patch matching: Gunakan version + appVersionCode + patchCount
 class PatchService {
   static PatchService? _instance;
   static PatchService get instance => _instance ??= PatchService._();
@@ -26,7 +24,7 @@ class PatchService {
 
   // SharedPreferences keys
   static const String _keyPatchCount = 'patch_count';
-  static const String _keyAppVersionCodeAtPatch = 'app_version_code_at_patch';
+  static const String _keyBuildNumberAtPatch = 'build_number_at_patch'; // Simpan buildNumber saat patch di-apply
   static const String _keyPatchPending = 'patch_pending';
 
   bool _isInitialized = false;
@@ -74,26 +72,26 @@ class PatchService {
   }
 
   /// Cek apakah APK sudah di-upgrade sejak patch terakhir
-  /// Jika appVersionCode di SharedPreferences != appVersionCode saat ini,
-  /// berarti APK sudah di-upgrade dan patch state harus di-reset
+  /// Bandingkan buildNumber saat ini dengan yang disimpan saat patch di-apply
+  /// buildNumber selalu increment, jadi jika berbeda = APK di-upgrade
   Future<void> _checkApkUpgrade() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final storedAppVersionCode = prefs.getInt(_keyAppVersionCodeAtPatch);
-      final currentAppVersionCode = AppVersion.appVersionCode;
+      final storedBuildNumber = prefs.getInt(_keyBuildNumberAtPatch);
+      final currentBuildNumber = AppVersion.buildNumber;
 
       debugPrint('[PatchService] ===== APK UPGRADE CHECK =====');
-      debugPrint('[PatchService] storedAppVersionCode: $storedAppVersionCode');
-      debugPrint('[PatchService] currentAppVersionCode: $currentAppVersionCode');
+      debugPrint('[PatchService] storedBuildNumber: $storedBuildNumber');
+      debugPrint('[PatchService] currentBuildNumber: $currentBuildNumber');
 
-      if (storedAppVersionCode != null && storedAppVersionCode != currentAppVersionCode) {
+      if (storedBuildNumber != null && storedBuildNumber != currentBuildNumber) {
         // APK berbeda dengan saat patch di-apply — reset state
         debugPrint('[PatchService] APK upgraded! Clearing patch state...');
 
         await FlutterPatcher.rollback();
         await prefs.remove(_keyPatchCount);
         await prefs.remove(_keyPatchPending);
-        await prefs.remove(_keyAppVersionCodeAtPatch);
+        await prefs.remove(_keyBuildNumberAtPatch);
 
         _patchCount = 0;
         _patchPending = false;
@@ -188,8 +186,8 @@ class PatchService {
         // Simpan state
         final prefs = await SharedPreferences.getInstance();
 
-        // Simpan appVersionCode saat patch ini di-apply
-        await prefs.setInt(_keyAppVersionCodeAtPatch, AppVersion.appVersionCode);
+        // Simpan buildNumber saat patch ini di-apply (untuk deteksi APK upgrade)
+        await prefs.setInt(_keyBuildNumberAtPatch, AppVersion.buildNumber);
 
         // Increment patchCount
         _patchCount++;
@@ -199,7 +197,7 @@ class PatchService {
         _patchPending = true;
         await prefs.setBool(_keyPatchPending, true);
 
-        debugPrint('[PatchService] Patch count: $_patchCount');
+        debugPrint('[PatchService] Patch count: $_patchCount, buildNumber: ${AppVersion.buildNumber}');
 
         return PatchResult(
           success: true,
@@ -235,7 +233,7 @@ class PatchService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyPatchCount);
       await prefs.remove(_keyPatchPending);
-      await prefs.remove(_keyAppVersionCodeAtPatch);
+      await prefs.remove(_keyBuildNumberAtPatch);
 
       _patchCount = 0;
       _patchPending = false;
@@ -263,7 +261,7 @@ class PatchService {
       final patchCountToSend = _patchPending ? _patchCount - 1 : _patchCount;
 
       final response = await http.get(
-        Uri.parse('$_patchCheckUrl?version=$version&patch_count=$patchCountToSend&app_version_code=${AppVersion.appVersionCode}'),
+        Uri.parse('$_patchCheckUrl?version=$version&patch_count=$patchCountToSend&app_version_code=${AppVersion.appVersionCode}&build_number=${AppVersion.buildNumber}'),
         headers: {'Accept': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
