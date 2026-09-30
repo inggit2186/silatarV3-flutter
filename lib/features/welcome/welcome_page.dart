@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/services/patch_service.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
-import '../../core/services/update_service.dart';
+import '../../core/config/app_version.dart';
 import '../login/login_page.dart';
 
 class WelcomePage extends StatelessWidget {
@@ -173,13 +174,19 @@ class WelcomePage extends StatelessWidget {
             color: Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(Responsive.radius(12)),
           ),
-          child: Text(
-            'Versi Aplikasi : v${UpdateService.currentVersion} (${UpdateService.currentVersionCode})',
-            style: TextStyle(
-              fontSize: Responsive.fontSize(10),
-              color: Colors.white.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500,
-            ),
+          child: FutureBuilder<({String version, int versionCode})>(
+            future: PatchService.instance.getCurrentVersionInfo(),
+            builder: (context, snapshot) {
+              final versionText = snapshot.data?.version ?? AppVersion.version;
+              return Text(
+                'Versi Aplikasi : v$versionText',
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(10),
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w500,
+                ),
+              );
+            },
           ),
         ),
       ],

@@ -27,15 +27,18 @@ class UpdateService {
   static String get _checkUrl => '$_baseUrl/patch/check';
 
   /// Get current version string from AppVersion config
-  static String get currentVersion => AppVersion.display;
+  static String get currentVersion => AppVersion.version;
 
-  /// Get current version code from AppVersion config
-  /// Returns base version code for APK update comparison
-  static int get currentVersionCode => AppVersion.baseVersionCode;
+  /// Get base version code from AppVersion config
+  /// Returns APK's native versionCode (tidak berubah setelah patch).
+  static int get baseVersionCode => AppVersion.appVersionCode;
 
-  /// Async getter for version code (ensures latest value is loaded)
+  /// Async getter for the version code currently being run oleh user.
+  /// Mengembalikan applied_version_code (yang sudah termasuk patch), BUKAN
+  /// base APK version. Ini adalah nilai yang harus dikirim ke server agar
+  /// server tidak menawarkan patch yang sama berulang kali.
   static Future<int> getCurrentVersionCode() async {
-    return await PatchService.instance.currentVersionCode;
+    return PatchService.instance.currentVersionCode;
   }
 
   /// Check for updates from server
@@ -45,8 +48,11 @@ class UpdateService {
     int? customVersionCode,
   }) async {
     try {
+      // Ambil versi efektif yang sedang berjalan (termasuk patch), bukan
+      // base APK version. Agar server tidak menawarkan patch yang sudah
+      // di-apply.
       final version = customVersion ?? currentVersion;
-      final versionCode = customVersionCode ?? currentVersionCode;
+      final versionCode = customVersionCode ?? await getCurrentVersionCode();
 
       debugPrint('[UpdateService] ==================================');
       debugPrint('[UpdateService] Checking for updates...');
@@ -315,7 +321,7 @@ class UpdateService {
   /// Get current patch version from flutter_patcher
   Future<String?> getCurrentPatchVersion() async {
     try {
-      return await PatchService.instance.currentVersion;
+      return PatchService.instance.currentVersion;
     } catch (e) {
       return null;
     }

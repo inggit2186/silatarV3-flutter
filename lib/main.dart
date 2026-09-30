@@ -4,17 +4,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/neo_mirai_theme.dart';
 import 'core/services/storage_service.dart';
 import 'core/services/api_service.dart';
+import 'core/services/apk_update_service.dart';
 import 'core/services/patch_service.dart';
 import 'core/services/update_service.dart';
+import 'core/config/app_version.dart';
 import 'core/widgets/update_dialog.dart';
 import 'core/models/user_model.dart';
 import 'core/providers/user_provider.dart';
 import 'features/welcome/welcome_page.dart';
 import 'features/main_shell.dart';
+
+/// Keys for SharedPreferences
+class PrefsKeys {
+  static const String pendingMandatoryApk = 'pending_mandatory_apk';
+  static const String pendingMandatoryApkVersion = 'pending_mandatory_apk_version';
+  static const String pendingMandatoryApkVersionCode = 'pending_mandatory_apk_version_code';
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +36,7 @@ void main() async {
   await StorageService().init();
 
   // Initialize flutter_patcher for hot code push
+  // _checkApkUpgrade() akan dipanggil otomatis di initialize()
   await PatchService.instance.initialize();
 
   // Set status bar style - transparent for splash with image
@@ -67,6 +78,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> {
   bool _checkedUpdate = false;
   UpdateInfo? _pendingUpdate;
+  bool _pendingMandatoryApk = false;
 
   @override
   void initState() {
@@ -74,75 +86,224 @@ class _SplashScreenState extends State<SplashScreen> {
     _initializeAndNavigate();
   }
 
+  /// Check if there's a pending mandatory APK install
+  Future<void> _checkPendingMandatoryApk() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasPending = prefs.getBool(PrefsKeys.pendingMandatoryApk) ?? false;
+      if (hasPending) {
+        final pendingVersion = prefs.getString(PrefsKeys.pendingMandatoryApkVersion);
+        final pendingVersionCode = prefs.getInt(PrefsKeys.pendingMandatoryApkVersionCode);
+        debugPrint('[Splash] Pending mandatory APK found: $pendingVersion ($pendingVersionCode)');
+        setState(() {
+          _pendingMandatoryApk = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('[Splash] Error checking pending APK: $e');
+    }
+  }
+
+  /// Clear pending mandatory APK when successfully installed
+  Future<void> _clearPendingMandatoryApk() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(PrefsKeys.pendingMandatoryApk);
+      await prefs.remove(PrefsKeys.pendingMandatoryApkVersion);
+      await prefs.remove(PrefsKeys.pendingMandatoryApkVersionCode);
+      debugPrint('[Splash] Pending mandatory APK cleared');
+    } catch (e) {
+      debugPrint('[Splash] Error clearing pending APK: $e');
+    }
+  }
+
+  /// Set pending mandatory APK
+  Future<void> _setPendingMandatoryApk(UpdateInfo info) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(PrefsKeys.pendingMandatoryApk, true);
+      await prefs.setString(PrefsKeys.pendingMandatoryApkVersion, info.version);
+      await prefs.setInt(PrefsKeys.pendingMandatoryApkVersionCode, info.versionCode);
+      debugPrint('[Splash] Pending mandatory APK set: ${info.version} (${info.versionCode})');
+    } catch (e) {
+      debugPrint('[Splash] Error setting pending APK: $e');
+    }
+  }
+
   Future<void> _initializeAndNavigate() async {
+    // Check for pending mandatory APK install first
+    await _checkPendingMandatoryApk();
+
+    // If there's a pending mandatory APK, check if APK was already installed.
+    // Dengan hybrid approach: Bandingkan appVersionCode
+    if (_pendingMandatoryApk) {
+      final prefs = await SharedPreferences.getInstance();
+      final pendingVersionCode = prefs.getInt(PrefsKeys.pendingMandatoryApkVersionCode);
+      final pendingVersion = prefs.getString(PrefsKeys.pendingMandatoryApkVersion);
+
+      debugPrint('[Splash] ===== PENDING APK CHECK =====');
+      debugPrint('[Splash] pendingMandatoryApk = $_pendingMandatoryApk');
+      debugPrint('[Splash] pendingVersion = $pendingVersion');
+      debugPrint('[Splash] pendingVersionCode = $pendingVersionCode');
+      debugPrint('[Splash] current AppVersion.appVersionCode = ${AppVersion.appVersionCode}');
+      debugPrint('[Splash] current AppVersion.version = ${AppVersion.version}');
+
+      // Bandingkan appVersionCode
+      final currentAppVersionCode = AppVersion.appVersionCode;
+      if (pendingVersionCode != null) {
+        if (pendingVersionCode <= currentAppVersionCode) {
+          // APK sudah terinstall dengan versi >= yang ditunggu.
+          debugPrint('[Splash] ✅ APK already installed — clearing pending');
+          await _clearPendingMandatoryApk();
+          setState(() => _pendingMandatoryApk = false);
+        } else {
+          debugPrint('[Splash] ❌ APK NOT yet installed (pending > current) — keep pending');
+        }
+      } else {
+        // pendingVersionCode null — tidak valid, clearkan saja
+        debugPrint('[Splash] ❌ pendingVersionCode is NULL — clearing pending');
+        await _clearPendingMandatoryApk();
+        setState(() => _pendingMandatoryApk = false);
+      }
+      debugPrint('[Splash] ===== END PENDING CHECK =====');
+    }
+
     // Check for updates in background
     // Enable check in debug mode for testing (set to true to always check)
     final bool enableUpdateCheck = true; // Change to false to disable in debug
     if ((!kDebugMode || enableUpdateCheck) && !_checkedUpdate) {
       _checkedUpdate = true;
-      _pendingUpdate = await UpdateService.instance.checkForUpdate();
-      debugPrint('[Splash] Update check completed: ${_pendingUpdate != null ? "Update available" : "No update"}');
+      // If mandatory APK is pending, skip update check
+      if (!_pendingMandatoryApk) {
+        debugPrint('[Splash] Calling checkForUpdate()...');
+        _pendingUpdate = await UpdateService.instance.checkForUpdate();
+        debugPrint('[Splash] Update check completed: ${_pendingUpdate != null ? "Update available: ${_pendingUpdate!.version} (${_pendingUpdate!.versionCode}) type=${_pendingUpdate!.updateType}" : "No update"}');
+      } else {
+        debugPrint('[Splash] Skipping update check - pending mandatory APK');
+      }
     }
 
     await Future.delayed(const Duration(milliseconds: 2000));
 
     if (!mounted) return;
 
-    // Show update dialog if update available
-    if (_pendingUpdate != null && _pendingUpdate!.hasUpdate) {
+    // Show update dialog if:
+    // 1. Update available, or
+    // 2. Pending mandatory APK install
+    debugPrint('[Splash] Decision: _pendingMandatoryApk=$_pendingMandatoryApk _pendingUpdate=${_pendingUpdate?.versionCode} hasUpdate=${_pendingUpdate?.hasUpdate}');
+    if (_pendingMandatoryApk || (_pendingUpdate != null && _pendingUpdate!.hasUpdate)) {
+      debugPrint('[Splash] ✅ Showing update dialog');
       await _showUpdateDialog();
+    } else {
+      debugPrint('[Splash] ❌ Skipping dialog — no pending APK and no update');
     }
 
-    // Continue navigation
+    // Continue navigation only if no pending mandatory APK
     if (!mounted) return;
     await _navigateToDestination();
   }
 
   Future<void> _showUpdateDialog() async {
-    if (!mounted || _pendingUpdate == null) return;
+    if (!mounted) return;
 
-    final info = _pendingUpdate!;
+    UpdateInfo info;
 
-    // For APK updates, use progress callback
-    Future<UpdateResult> Function(double, String)? onUpdateWithProgress;
-    Function(UpdateResult)? onUpdate;
+    // Check if we have pending mandatory APK
+    if (_pendingMandatoryApk) {
+      final prefs = await SharedPreferences.getInstance();
+      final pendingVersionCode = prefs.getInt(PrefsKeys.pendingMandatoryApkVersionCode) ?? 1;
 
-    if (info.isApk) {
-      // APK update with progress
-      onUpdateWithProgress = (progress, status) async {
-        // Download and install APK
-        return await UpdateService.instance.downloadAndInstall(
-          downloadUrl: info.downloadUrl,
-          version: info.version,
-          md5: info.md5,
-          onProgress: (p, s) {
-            // Progress will be handled by the dialog's internal state
-            debugPrint('[APK Update] Progress: ${(p * 100).toStringAsFixed(0)}% - $s');
-          },
-        );
-      };
+      // Check for actual update info from backend
+      final freshUpdate = await UpdateService.instance.checkForUpdate();
+
+      // Jika API return null (APK disabled / sudah diinstall), cek apakah
+      // APK sudah terinstall dengan versi >= pending. Jika ya, clearkan
+      // pending state dan skip dialog.
+      if (freshUpdate == null) {
+        // APK update disabled / already installed
+        // Gunakan AppVersion.appVersionCode sebagai source of truth
+        final currentAppVersionCode = AppVersion.appVersionCode;
+        debugPrint('[Splash] APK update disabled in backend: pending=$pendingVersionCode current=$currentAppVersionCode');
+
+        if (pendingVersionCode <= currentAppVersionCode) {
+          // APK sudah diinstall (atau pending tidak valid) — clearkan dan skip
+          debugPrint('[Splash] APK already installed — clearing pending and skipping dialog');
+          await _clearPendingMandatoryApk();
+          setState(() => _pendingMandatoryApk = false);
+          // Check if there's a non-mandatory update available
+          _pendingUpdate = null;
+        }
+        // else: API null tapi APK belum diinstall → skip dialog (tidak ada URL untuk download)
+        // User bisa coba lagi di kesempatan berikutnya
+        return;
+      }
+
+      info = freshUpdate;
+    } else if (_pendingUpdate != null) {
+      info = _pendingUpdate!;
     } else {
-      // Patch update without progress
-      onUpdate = (result) async {
-        return await UpdateService.instance.applyUpdate(info);
-      };
+      return;
     }
 
-    await showUpdateDialog(
-      context: context,
-      info: info,
-      barrierDismissible: !info.isMandatory,
-      onUpdate: onUpdate ?? (_) async => UpdateResult(success: true, message: ''),
-      onUpdateWithProgress: onUpdateWithProgress,
-      onLater: info.isMandatory
-          ? null
-          : () {
-              Navigator.pop(context);
-            },
-      onRestart: () {
-        debugPrint('[Splash] Restart app to apply changes');
-      },
-    );
+    if (info.isApk) {
+      // APK update with progress callback
+      await showUpdateDialog(
+        context: context,
+        info: info,
+        barrierDismissible: false, // Always non-dismissible for APK mandatory
+        onUpdate: (_) async => UpdateResult(success: true, message: ''),
+        onApkDownloadWithProgress: (onProgress) async {
+          // Download APK with progress updates
+          final result = await ApkUpdateService.instance.downloadAndInstall(
+            downloadUrl: info.downloadUrl,
+            version: info.version,
+            md5: info.md5,
+            onProgress: onProgress,
+          );
+
+          if (result.success) {
+            return ApkInstallCallbackResult(
+              downloadSuccess: true,
+              filePath: result.filePath,
+              message: result.message,
+            );
+          } else {
+            return ApkInstallCallbackResult(
+              downloadSuccess: false,
+              error: result.error,
+              message: result.error,
+            );
+          }
+        },
+        // Called when user clicks Install Update button
+        onMandatoryInstallTriggered: () {
+          debugPrint('[Splash] Mandatory APK install triggered');
+          _setPendingMandatoryApk(info);
+        },
+        onLater: null, // Never show "Nanti" for mandatory APK
+        onRestart: () {
+          debugPrint('[Splash] APK installed, restart app');
+        },
+      );
+    } else {
+      // Patch update
+      await showUpdateDialog(
+        context: context,
+        info: info,
+        barrierDismissible: !info.isMandatory,
+        onUpdate: (_) async {
+          return await UpdateService.instance.applyUpdate(info);
+        },
+        onLater: info.isMandatory
+            ? null
+            : () {
+                Navigator.pop(context);
+              },
+        onRestart: () {
+          debugPrint('[Splash] Patch applied, restart app');
+        },
+      );
+    }
   }
 
   Future<void> _navigateToDestination() async {
@@ -339,3 +500,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+

@@ -1,115 +1,118 @@
 @echo off
 chcp 65001 >nul
-setlocal enabledelayedexpansion
 
 echo ============================================
 echo  SILATAR V2 - Build APK Script
 echo ============================================
 echo.
 
-REM Check if version argument provided
 set "NEW_VERSION=%~1"
-set "BUILD_NUMBER=%~2"
 
-if "%NEW_VERSION%"=="" (
-    echo Usage: build.bat [VERSION] [BUILD_NUMBER]
-    echo Example: build.bat 2.0.2 4
-    echo.
-    echo Current version will be used from:
-    echo   - pubspec.yaml
-    echo   - lib/core/config/app_version.dart
-    echo.
-    echo To build with specific version, pass as argument.
-    echo.
-)
+REM =============================================
+REM WRITE POWERSHELL SCRIPT
+REM =============================================
+echo $n = '%NEW_VERSION%' > build.ps1
+echo $c = Get-Content 'lib\core\config\app_version.dart' -Raw >> build.ps1
+echo $v = [regex]::Match($c, "version\s*=\s*'([^']+)'").Groups[1].Value >> build.ps1
+echo $a = [regex]::Match($c, 'appVersionCode\s*=\s*(\d+);').Groups[1].Value >> build.ps1
+echo $b = [regex]::Match($c, 'buildNumber\s*=\s*(\d+);').Groups[1].Value >> build.ps1
+echo if ($n -eq $v) { $na = [int]$a + 1; Write-Host "SAME" } else { $na = 1; Write-Host "NEW" } >> build.ps1
+echo $nb = [int]$b + 1 >> build.ps1
+echo $c = $c -replace "version = '[^']+'", "version = '$n'" >> build.ps1
+echo $c = $c -replace "appVersionCode = \d+;", "appVersionCode = $na;" >> build.ps1
+echo $c = $c -replace "buildNumber = \d+;", "buildNumber = $nb;" >> build.ps1
+echo Set-Content -Path 'lib\core\config\app_version.dart' -Value $c >> build.ps1
+echo $p = Get-Content 'pubspec.yaml' -Raw >> build.ps1
+echo $p = $p -replace "version: .+", "version: $n" >> build.ps1
+echo Set-Content -Path 'pubspec.yaml' -Value $p >> build.ps1
+echo Write-Host "VERSION=$v" >> build.ps1
+echo Write-Host "APP_CODE=$a" >> build.ps1
+echo Write-Host "BUILD_NUM=$b" >> build.ps1
+echo Write-Host "NEW_APP=$na" >> build.ps1
+echo Write-Host "NEW_BUILD=$nb" >> build.ps1
+echo Write-Host "OUTPUT=silatar_v2_v${n}_build${na}.apk" >> build.ps1
 
-REM If version provided, update files
-if not "%NEW_VERSION%"=="" (
-    echo [UPDATE] Updating version to %NEW_VERSION%...
-
-    REM Update pubspec.yaml
-    powershell -Command "(Get-Content pubspec.yaml) -replace 'version: .+', 'version: %NEW_VERSION%' | Set-Content pubspec.yaml"
-
-    REM Update app_version.dart
-    powershell -Command "(Get-Content lib\core\config\app_version.dart) -replace \"static const String display = '.+'\", \"static const String display = '%NEW_VERSION%'\" -replace 'static const int buildNumber = .+', \"static const int buildNumber = %BUILD_NUMBER%\" | Set-Content lib\core\config\app_version.dart"
-
-    echo [OK] Version updated
-    echo.
-)
-
-REM Show current version info
-echo [INFO] Current build configuration:
-powershell -Command "(Get-Content pubspec.yaml | Select-String 'version:')"
-powershell -Command "(Get-Content lib\core\config\app_version.dart | Select-String 'display =')"
+REM =============================================
+REM RUN POWERSHELL
+REM =============================================
+powershell -ExecutionPolicy Bypass -File build.ps1 > build.log 2>&1
+type build.log
 echo.
 
-REM Create output folder
+REM =============================================
+REM READ RESULTS
+REM =============================================
+for /f "tokens=1,* delims==" %%A in ('findstr "VERSION=" build.log') do set "OLD_VER=%%B"
+for /f "tokens=1,* delims==" %%A in ('findstr "APP_CODE=" build.log') do set "OLD_APP=%%B"
+for /f "tokens=1,* delims==" %%A in ('findstr "BUILD_NUM=" build.log') do set "OLD_BUILD=%%B"
+for /f "tokens=1,* delims==" %%A in ('findstr "NEW_APP=" build.log') do set "FINAL_APP=%%B"
+for /f "tokens=1,* delims==" %%A in ('findstr "NEW_BUILD=" build.log') do set "FINAL_BUILD=%%B"
+for /f "tokens=1,* delims==" %%A in ('findstr "OUTPUT=" build.log') do set "FINAL_OUT=%%B"
+
+REM Clean up
+del build.ps1 2>nul
+del build.log 2>nul
+
+if "%OLD_VER%"=="" (
+    echo [ERROR] Failed to read version
+    pause
+    exit /b 1
+)
+
+echo.
+echo ============================================
+echo  Current: v%OLD_VER% (app=%OLD_APP%, build=%OLD_BUILD%^)
+echo  New:     v%NEW_VERSION% (app=%FINAL_APP%, build=%FINAL_BUILD%^)
+echo ============================================
+echo.
+
+REM =============================================
+REM BUILD APK
+REM =============================================
 if not exist "output" mkdir "output"
 
-REM Clean previous builds
 echo [1/4] Cleaning build folder...
 if exist "build" rmdir /S /Q "build"
-if exist ".dart_tool" rmdir /S /Q ".dart_tool"
 
-REM Get dependencies
 echo [2/4] Getting dependencies...
 call flutter pub get
 if errorlevel 1 (
-    echo.
     echo [ERROR] Failed to get dependencies!
     pause
     exit /b 1
 )
 
-REM Create fresh dart tool
 echo [3/4] Creating Dart tool environment...
 call flutter doctor
 
-REM Get version for filename
-for /f "tokens=2 delims=: " %%a in ('powershell -Command "(Get-Content pubspec.yaml | Select-String 'version:').Line.Replace('version:','').Trim()"') do set "APK_VERSION=%%a"
-set "APK_VERSION=!APK_VERSION:+=-!"
-if "%BUILD_NUMBER%"=="" (
-    for /f "tokens=3 delims== " %%a in ('powershell -Command "(Get-Content lib\core\config\app_version.dart | Select-String 'buildNumber =')"') do set "BUILD_NUM=%%a"
-    set "BUILD_NUM=!BUILD_NUM:;=!"
-    set "OUTPUT_NAME=silatar_v2-!APK_VERSION:-=_!-!BUILD_NUM!.apk"
-) else (
-    set "OUTPUT_NAME=silatar_v2-!APK_VERSION:-=_!-%BUILD_NUMBER%.apk"
-)
-
-REM Build ARM64 only - smallest APK size
 echo [4/4] Building ARM64 release APK...
-echo Output: output\%OUTPUT_NAME%
-echo.
 call flutter build apk --release --target-platform android-arm64 --no-tree-shake-icons
 if errorlevel 1 (
-    echo.
-    echo [ERROR] Build failed! Check errors above.
+    echo [ERROR] Build failed!
     pause
     exit /b 1
 )
 
-REM Check if APK was created
 if not exist "build\app\outputs\flutter-apk\app-release.apk" (
-    echo.
-    echo [ERROR] APK file not found after build!
-    dir "build\app\outputs\flutter-apk\" 2>nul || echo Directory not found
+    echo [ERROR] APK not found!
     pause
     exit /b 1
 )
 
-REM Copy to output folder
 echo.
-echo Copying APK to output folder...
-copy /Y "build\app\outputs\flutter-apk\app-release.apk" "output\%OUTPUT_NAME%"
+echo [DONE] Copying APK...
+copy /Y "build\app\outputs\flutter-apk\app-release.apk" "output\%FINAL_OUT%"
 
-REM Show result
 echo.
 echo ============================================
 echo  Build Complete!
 echo ============================================
 echo.
-echo Output: output\%OUTPUT_NAME%
+dir "output\%FINAL_OUT%"
 echo.
-dir "output\%OUTPUT_NAME%"
+echo Summary:
+echo   Version:        v%NEW_VERSION%
+echo   AppVersionCode: %FINAL_APP%  ^(per-version^)
+echo   BuildNumber:    %FINAL_BUILD%  ^(global^)
 echo.
 pause

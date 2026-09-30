@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../services/apk_update_service.dart';
+import '../services/patch_service.dart';
 import '../services/update_service.dart';
+import '../config/app_version.dart';
 import '../theme/neo_mirai_theme.dart';
 import '../utils/responsive.dart';
 
@@ -7,8 +10,13 @@ import '../utils/responsive.dart';
 class UpdateDialog extends StatefulWidget {
   final UpdateInfo info;
   final Function(UpdateResult) onUpdate;
-  /// Optional callback for APK updates that receives progress updates
-  final Future<UpdateResult> Function(double progress, String statusText)? onUpdateWithProgress;
+  /// Callback for APK updates that returns (downloadResult, installerLauncher)
+  /// Returns: (result, shouldInstallNow)
+  final Future<ApkInstallCallbackResult> Function(
+    Function(double progress, String statusText) onProgress,
+  )? onApkDownloadWithProgress;
+  /// Callback when mandatory APK install is triggered (user clicked Install)
+  final VoidCallback? onMandatoryInstallTriggered;
   final VoidCallback? onLater;
   final VoidCallback? onRestart;
 
@@ -16,7 +24,8 @@ class UpdateDialog extends StatefulWidget {
     super.key,
     required this.info,
     required this.onUpdate,
-    this.onUpdateWithProgress,
+    this.onApkDownloadWithProgress,
+    this.onMandatoryInstallTriggered,
     this.onLater,
     this.onRestart,
   });
@@ -25,11 +34,27 @@ class UpdateDialog extends StatefulWidget {
   State<UpdateDialog> createState() => _UpdateDialogState();
 }
 
+/// Result dari APK download + install callback
+class ApkInstallCallbackResult {
+  final bool downloadSuccess;
+  final String? filePath;
+  final String? error;
+  final String? message;
+
+  ApkInstallCallbackResult({
+    required this.downloadSuccess,
+    this.filePath,
+    this.error,
+    this.message,
+  });
+}
+
 class _UpdateDialogState extends State<UpdateDialog> {
   UpdateDialogStatus _status = UpdateDialogStatus.idle;
   double _progress = 0;
   String _statusText = 'Menunggu...';
   UpdateResult? _result;
+  String? _downloadedFilePath;
 
   bool get _isPatch => widget.info.isPatch;
   bool get _isMandatory => widget.info.isMandatory;
@@ -66,6 +91,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
               _buildTitle(),
               SizedBox(height: Responsive.spacing(8)),
               _buildVersionBadge(),
+              SizedBox(height: Responsive.spacing(12)),
+              _buildInstallStatusWarning(),
               SizedBox(height: Responsive.spacing(16)),
               _buildContent(),
               SizedBox(height: Responsive.spacing(24)),
@@ -156,6 +183,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
       case UpdateDialogStatus.readyToInstall:
         title = 'Download Selesai';
         break;
+      case UpdateDialogStatus.launching:
+        title = 'Membuka Installer...';
+        break;
       case UpdateDialogStatus.success:
         title = 'Update Berhasil!';
         break;
@@ -236,12 +266,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
         vertical: Responsive.spacing(2),
       ),
       decoration: BoxDecoration(
-        color: (isPatch ? NeoMiraiColors.gold : NeoMiraiColors.gold)
-            .withValues(alpha: 0.1),
+        color: NeoMiraiColors.gold.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(Responsive.radius(12)),
         border: Border.all(
-          color: (isPatch ? NeoMiraiColors.gold : NeoMiraiColors.gold)
-              .withValues(alpha: 0.3),
+          color: NeoMiraiColors.gold.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -250,19 +278,75 @@ class _UpdateDialogState extends State<UpdateDialog> {
           Icon(
             isPatch ? Icons.bolt_rounded : Icons.android_rounded,
             size: 14,
-            color: isPatch ? NeoMiraiColors.gold : NeoMiraiColors.gold,
+            color: NeoMiraiColors.gold,
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
             isPatch ? 'Patch' : 'Full APK',
             style: TextStyle(
               fontSize: Responsive.fontSize(10),
               fontWeight: FontWeight.w600,
-              color: isPatch ? NeoMiraiColors.gold : NeoMiraiColors.gold,
+              color: NeoMiraiColors.gold,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Warning widget untuk APK update — cek apakah APK installer sudah selesai
+  Widget _buildInstallStatusWarning() {
+    // Hanya untuk APK update (bukan patch)
+    if (!widget.info.isApk) return const SizedBox.shrink();
+
+    // Hanya tampilkan warning saat status idle (sebelum download/install)
+    if (_status != UpdateDialogStatus.idle) return const SizedBox.shrink();
+
+    return FutureBuilder<({String version, int versionCode})>(
+      future: PatchService.instance.getCurrentVersionInfo(),
+      builder: (context, snapshot) {
+        final currentAppVersionCode = snapshot.data?.versionCode ?? AppVersion.appVersionCode;
+
+        // Jika belum diinstall, tampilkan warning
+        if (currentAppVersionCode != widget.info.versionCode) {
+          return Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: Responsive.spacing(12),
+              vertical: Responsive.spacing(8),
+            ),
+            decoration: BoxDecoration(
+              color: NeoMiraiColors.warning.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(Responsive.radius(12)),
+              border: Border.all(
+                color: NeoMiraiColors.warning.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: NeoMiraiColors.warning,
+                ),
+                SizedBox(width: Responsive.spacing(8)),
+                Expanded(
+                  child: Text(
+                    'Versi APK installer (${widget.info.versionCode}) berbeda dari app saat ini ($currentAppVersionCode). Selesaikan installasi APK terlebih dahulu.',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(11),
+                      color: NeoMiraiColors.warning,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Versi cocok — tidak perlu warning
+        return const SizedBox.shrink();
+      },
     );
   }
 
@@ -276,7 +360,76 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Widget _buildIdleContent() {
     return Column(
       children: [
-        // Size indicator
+        // Info versi saat ini vs versi yang diinstall
+        FutureBuilder<({String version, int versionCode})>(
+          future: PatchService.instance.getCurrentVersionInfo(),
+          builder: (context, snapshot) {
+            final currentVersion = snapshot.data?.version ?? AppVersion.version;
+            final currentBuild = snapshot.data?.versionCode ?? AppVersion.appVersionCode;
+            return Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.spacing(12),
+                vertical: Responsive.spacing(6),
+              ),
+              decoration: BoxDecoration(
+                color: NeoMiraiColors.ink.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(Responsive.radius(8)),
+                border: Border.all(
+                  color: NeoMiraiColors.line.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.phone_android_rounded,
+                    size: 14,
+                    color: NeoMiraiColors.inkSoft,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Sekarang: ',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(11),
+                      color: NeoMiraiColors.inkSoft,
+                    ),
+                  ),
+                  Text(
+                    'v$currentVersion (build $currentBuild)',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(11),
+                      fontWeight: FontWeight.w600,
+                      color: NeoMiraiColors.ink,
+                    ),
+                  ),
+                  SizedBox(width: Responsive.spacing(12)),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 14,
+                    color: NeoMiraiColors.gold,
+                  ),
+                  SizedBox(width: Responsive.spacing(6)),
+                  Text(
+                    'Update ke: ',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(11),
+                      color: NeoMiraiColors.inkSoft,
+                    ),
+                  ),
+                  Text(
+                    'v${widget.info.version} (build ${widget.info.versionCode})',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(11),
+                      fontWeight: FontWeight.w700,
+                      color: NeoMiraiColors.gold,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        SizedBox(height: Responsive.spacing(12)),
         Container(
           padding: EdgeInsets.symmetric(
             horizontal: Responsive.spacing(16),
@@ -294,7 +447,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 size: 16,
                 color: NeoMiraiColors.gold,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 widget.info.isPatch
                     ? 'Hanya ${widget.info.displaySize}'
@@ -309,7 +462,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
           ),
         ),
         SizedBox(height: Responsive.spacing(12)),
-        // Changelog
         if (widget.info.changelog.isNotEmpty)
           Container(
             width: double.infinity,
@@ -359,7 +511,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   size: 20,
                   color: NeoMiraiColors.success,
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Update ringan, apply instant tanpa install ulang!',
@@ -378,6 +530,68 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildProgressContent() {
+    // Download complete state
+    if (_status == UpdateDialogStatus.readyToInstall) {
+      return Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(Responsive.spacing(16)),
+            decoration: BoxDecoration(
+              color: NeoMiraiColors.success.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(Responsive.radius(16)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 32,
+                  color: NeoMiraiColors.success,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _statusText,
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(13),
+                      color: NeoMiraiColors.success,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: Responsive.spacing(12)),
+          Container(
+            padding: EdgeInsets.all(Responsive.spacing(12)),
+            decoration: BoxDecoration(
+              color: NeoMiraiColors.gold.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(Responsive.radius(12)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.android_rounded,
+                  size: 20,
+                  color: NeoMiraiColors.gold,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tekan "Install Update" untuk melanjutkan',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(11),
+                      color: NeoMiraiColors.gold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Success state
     if (_status == UpdateDialogStatus.success) {
       return Column(
         children: [
@@ -394,7 +608,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   size: 32,
                   color: NeoMiraiColors.success,
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     _result?.message ?? 'Update berhasil diapply!',
@@ -422,7 +636,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     size: 20,
                     color: NeoMiraiColors.gold,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Restart aplikasi untuk melihat perubahan',
@@ -440,6 +654,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       );
     }
 
+    // Error state
     if (_status == UpdateDialogStatus.error) {
       return Container(
         padding: EdgeInsets.all(Responsive.spacing(16)),
@@ -454,7 +669,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
               size: 32,
               color: NeoMiraiColors.error,
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 _result?.message ?? 'Terjadi kesalahan',
@@ -469,13 +684,13 @@ class _UpdateDialogState extends State<UpdateDialog> {
       );
     }
 
-    // Progress view
+    // Downloading / Launching state (with progress bar)
     return Column(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(Responsive.radius(8)),
           child: LinearProgressIndicator(
-            value: _progress,
+            value: _progress > 0 ? _progress : null,
             backgroundColor: NeoMiraiColors.line.withValues(alpha: 0.3),
             valueColor: AlwaysStoppedAnimation<Color>(NeoMiraiColors.gold),
             minHeight: 10,
@@ -485,21 +700,25 @@ class _UpdateDialogState extends State<UpdateDialog> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              _statusText,
-              style: TextStyle(
-                fontSize: Responsive.fontSize(13),
-                color: NeoMiraiColors.inkSoft,
+            Expanded(
+              child: Text(
+                _statusText,
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(13),
+                  color: NeoMiraiColors.inkSoft,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            Text(
-              '${(_progress * 100).toStringAsFixed(0)}%',
-              style: TextStyle(
-                fontSize: Responsive.fontSize(14),
-                fontWeight: FontWeight.bold,
-                color: NeoMiraiColors.gold,
+            if (_progress > 0)
+              Text(
+                '${(_progress * 100).toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(14),
+                  fontWeight: FontWeight.bold,
+                  color: NeoMiraiColors.gold,
+                ),
               ),
-            ),
           ],
         ),
       ],
@@ -518,8 +737,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
         return _buildSuccessActions();
       case UpdateDialogStatus.error:
         return _buildErrorActions();
-      case UpdateDialogStatus.install:
-        return _buildInstallActions();
       default:
         return const SizedBox.shrink();
     }
@@ -563,15 +780,19 @@ class _UpdateDialogState extends State<UpdateDialog> {
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   _isPatch ? Icons.bolt_rounded : Icons.download_rounded,
                   size: Responsive.iconSize(18),
                 ),
                 SizedBox(width: Responsive.spacing(8)),
-                Text(
-                  _isPatch ? 'Update Sekarang' : 'Download Update',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                Flexible(
+                  child: Text(
+                    _isPatch ? 'Update Sekarang' : 'Download Update',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -587,7 +808,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: _launchInstaller,
+            onPressed: _installApk,
             style: ElevatedButton.styleFrom(
               backgroundColor: NeoMiraiColors.success,
               foregroundColor: NeoMiraiColors.rice,
@@ -604,21 +825,50 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 Icon(Icons.system_update_alt_rounded),
                 SizedBox(width: Responsive.spacing(8)),
                 Text(
-                  'Install Update',
+                  _isMandatory ? 'Wajib Install Update' : 'Install Update',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
           ),
         ),
-        SizedBox(height: Responsive.spacing(8)),
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            'Nanti',
-            style: TextStyle(color: NeoMiraiColors.ash),
+        // Only show "Nanti" button for non-mandatory updates
+        if (!_isMandatory) ...[
+          SizedBox(height: Responsive.spacing(8)),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Nanti',
+              style: TextStyle(color: NeoMiraiColors.ash),
+            ),
           ),
-        ),
+        ],
+        // Show warning for mandatory
+        if (_isMandatory) ...[
+          SizedBox(height: Responsive.spacing(8)),
+          Container(
+            padding: EdgeInsets.all(Responsive.spacing(12)),
+            decoration: BoxDecoration(
+              color: NeoMiraiColors.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(Responsive.radius(12)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_rounded, size: 16, color: NeoMiraiColors.error),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Update ini wajib diinstall. Aplikasi tidak bisa digunakan sebelum update.',
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(11),
+                      color: NeoMiraiColors.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -677,9 +927,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
       child: ElevatedButton(
         onPressed: () {
           Navigator.pop(context);
-          if (widget.onRestart != null) {
-            widget.onRestart!();
-          }
+          widget.onRestart?.call();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: NeoMiraiColors.success,
@@ -741,29 +989,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
     );
   }
 
-  Widget _buildInstallActions() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _startUpdate,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: NeoMiraiColors.gold,
-          foregroundColor: NeoMiraiColors.ink,
-          padding: EdgeInsets.symmetric(vertical: Responsive.spacing(14)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Responsive.radius(12)),
-          ),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.open_in_new_rounded),
-            SizedBox(width: 8),
-            Text('Buka Installer', style: TextStyle(fontWeight: FontWeight.w700)),
-          ],
-        ),
-      ),
-    );
+  /// Update progress display
+  void _updateProgress(double progress, String statusText) {
+    if (mounted) {
+      setState(() {
+        _progress = progress;
+        _statusText = statusText;
+      });
+    }
   }
 
   Future<void> _startUpdate() async {
@@ -778,42 +1011,32 @@ class _UpdateDialogState extends State<UpdateDialog> {
     });
 
     try {
-      // For APK updates, use progress callback if available
-      if (!widget.info.isPatch && widget.onUpdateWithProgress != null) {
-        final result = await widget.onUpdateWithProgress!(
-          0,
-          'Memulai download...',
+      // For APK updates with progress callback
+      if (!widget.info.isPatch && widget.onApkDownloadWithProgress != null) {
+        final result = await widget.onApkDownloadWithProgress!(
+          _updateProgress,
         );
 
-        _result = result;
-
-        if (result.success) {
-          if (result.needsUserConfirmation && result.filePath != null) {
-            // Download complete, waiting for user to click Install
-            setState(() {
-              _status = UpdateDialogStatus.readyToInstall;
-              _statusText = 'Silakan klik Install Update';
-            });
+        if (result.downloadSuccess && result.filePath != null) {
+          // Download complete, store file path and show install button
+          setState(() {
+            _status = UpdateDialogStatus.readyToInstall;
+            _statusText = 'Download selesai!';
+            _progress = 1.0;
             _downloadedFilePath = result.filePath;
-          } else {
-            // Installer launched
-            setState(() {
-              _status = UpdateDialogStatus.launching;
-              _statusText = 'Installer dibuka. Selesaikan installasi.';
-            });
-            // Auto close after a short delay
-            await Future.delayed(const Duration(seconds: 2));
-            if (mounted) {
-              Navigator.pop(context);
-            }
-          }
+          });
         } else {
           setState(() {
             _status = UpdateDialogStatus.error;
+            _result = UpdateResult(
+              success: false,
+              message: result.error ?? 'Gagal download update',
+            );
           });
         }
-      } else {
-        // Patch updates or fallback without progress
+      }
+      // For patch updates
+      else if (widget.info.isPatch) {
         final result = await widget.onUpdate(UpdateResult(
           success: false,
           message: '',
@@ -827,11 +1050,35 @@ class _UpdateDialogState extends State<UpdateDialog> {
             _status = UpdateDialogStatus.success;
           });
 
-          // Auto restart after success for patch updates
           await Future.delayed(const Duration(seconds: 2));
           if (mounted) {
             Navigator.pop(context);
             widget.onRestart?.call();
+          }
+        } else {
+          setState(() {
+            _status = UpdateDialogStatus.error;
+          });
+        }
+      }
+      // Fallback for APK without progress callback
+      else {
+        final result = await widget.onUpdate(UpdateResult(
+          success: false,
+          message: '',
+          updateType: widget.info.updateType,
+        ));
+
+        _result = result;
+
+        if (result.success) {
+          setState(() {
+            _status = UpdateDialogStatus.launching;
+            _statusText = 'Installer dibuka...';
+          });
+          await Future.delayed(const Duration(seconds: 2));
+          if (mounted) {
+            Navigator.pop(context);
           }
         } else {
           setState(() {
@@ -851,9 +1098,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
     }
   }
 
-  String? _downloadedFilePath;
-
-  Future<void> _launchInstaller() async {
+  Future<void> _installApk() async {
     if (_downloadedFilePath == null) {
       setState(() {
         _status = UpdateDialogStatus.error;
@@ -870,35 +1115,38 @@ class _UpdateDialogState extends State<UpdateDialog> {
       _statusText = 'Membuka installer...';
     });
 
-    try {
-      // Call onUpdate with the filePath to trigger install
-      // This is a bit hacky - ideally we'd have a separate install callback
-      // For now, we'll close the dialog and let user handle it
-      // The installer should have been launched by now via OpenFile
+    // Notify parent that mandatory install was triggered
+    if (_isMandatory && widget.onMandatoryInstallTriggered != null) {
+      widget.onMandatoryInstallTriggered!();
+    }
 
-      // Close dialog and tell user to complete install
-      if (mounted) {
+    try {
+      // Call ApkUpdateService to install
+      await ApkUpdateService.instance.installApk(
+        filePath: _downloadedFilePath!,
+        onProgress: (progress, status) {
+          _updateProgress(progress, status);
+        },
+      );
+
+      // For mandatory updates, DO NOT close dialog - user must complete install
+      if (!_isMandatory && mounted) {
         Navigator.pop(context);
-        // Don't call onRestart here - let user complete the install first
+      }
+      // For mandatory, keep dialog open with message
+      if (_isMandatory) {
+        setState(() {
+          _statusText = 'TUNGGU - Selesaikan installasi APK terlebih dahulu';
+        });
       }
     } catch (e) {
-      debugPrint('[UpdateDialog] Launch error: $e');
+      debugPrint('[UpdateDialog] Install error: $e');
       setState(() {
         _status = UpdateDialogStatus.error;
         _result = UpdateResult(
           success: false,
           message: 'Gagal membuka installer: $e',
         );
-      });
-    }
-  }
-
-  /// Update progress from external source (e.g., download progress)
-  void updateProgress(double progress, String text) {
-    if (mounted) {
-      setState(() {
-        _progress = progress;
-        _statusText = text;
       });
     }
   }
@@ -920,7 +1168,10 @@ Future<void> showUpdateDialog({
   required BuildContext context,
   required UpdateInfo info,
   required Function(UpdateResult) onUpdate,
-  Future<UpdateResult> Function(double progress, String statusText)? onUpdateWithProgress,
+  Future<ApkInstallCallbackResult> Function(
+    Function(double progress, String statusText) onProgress,
+  )? onApkDownloadWithProgress,
+  VoidCallback? onMandatoryInstallTriggered,
   VoidCallback? onLater,
   VoidCallback? onRestart,
   bool barrierDismissible = true,
@@ -931,7 +1182,8 @@ Future<void> showUpdateDialog({
     builder: (context) => UpdateDialog(
       info: info,
       onUpdate: onUpdate,
-      onUpdateWithProgress: onUpdateWithProgress,
+      onApkDownloadWithProgress: onApkDownloadWithProgress,
+      onMandatoryInstallTriggered: onMandatoryInstallTriggered,
       onLater: onLater,
       onRestart: onRestart,
     ),

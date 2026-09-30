@@ -5,6 +5,8 @@ import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/neo_components.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/patch_service.dart';
+import '../../core/config/app_version.dart';
 import '../../core/providers/user_provider.dart';
 import 'edit_profile_page.dart';
 import 'change_password_page.dart';
@@ -313,12 +315,19 @@ class _ProfilePageState extends State<ProfilePage> {
             onTap: () => _showComingSoon(context),
           ),
           _buildDivider(),
-          _buildMenuItem(
-            icon: Icons.info_outline_rounded,
-            title: 'Tentang Aplikasi',
-            subtitle: 'Versi 1.0.0',
-            showArrow: false,
-            onTap: () => _showAboutDialog(context),
+          FutureBuilder<({String version, int versionCode})>(
+            future: PatchService.instance.getCurrentVersionInfo(),
+            builder: (context, snapshot) {
+              final versionText = snapshot.data?.version ?? AppVersion.version;
+              final buildNumber = snapshot.data?.versionCode ?? AppVersion.appVersionCode;
+              return _buildMenuItem(
+                icon: Icons.info_outline_rounded,
+                title: 'Tentang Aplikasi',
+                subtitle: 'Versi v$versionText (build $buildNumber)',
+                showArrow: false,
+                onTap: () => _showAboutDialog(context),
+              );
+            },
           ),
         ],
       ),

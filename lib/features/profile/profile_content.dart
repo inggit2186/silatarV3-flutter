@@ -6,6 +6,7 @@ import '../../core/utils/responsive.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/services/api_service.dart';
 import '../../core/config/app_version.dart';
+import '../../core/services/patch_service.dart';
 import 'edit_profile_page.dart';
 import 'change_password_page.dart';
 import '../welcome/welcome_page.dart';
@@ -189,7 +190,18 @@ class ProfileContent extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoItem(icon: Icons.apps_rounded, title: 'SILATAR V2', desc: 'Versi ${AppVersion.full}'),
+            FutureBuilder<({String version, int versionCode})>(
+              future: PatchService.instance.getCurrentVersionInfo(),
+              builder: (context, snapshot) {
+                final versionText = snapshot.data?.version ?? AppVersion.version;
+                final buildNumber = snapshot.data?.versionCode ?? AppVersion.appVersionCode;
+                return _buildInfoItem(
+                  icon: Icons.apps_rounded,
+                  title: 'SILATAR V2',
+                  desc: 'Versi v$versionText (build $buildNumber)',
+                );
+              },
+            ),
             SizedBox(height: Responsive.spacing(12)),
             _buildInfoItem(icon: Icons.business_rounded, title: 'Kementerian Agama', desc: 'Kabupaten Tanah Datar'),
             SizedBox(height: Responsive.spacing(12)),

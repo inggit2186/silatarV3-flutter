@@ -1,58 +1,100 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo  SILATAR V2 - Generate Patch
+echo  SILATAR V2 - Generate Patch Script
 echo ============================================
 echo.
 
-REM Get parameters
-set PATCH_VERSION=%1
-set TARGET_VERSION_CODE=%2
-
-if "%PATCH_VERSION%"=="" (
-    echo Usage: generate_patch.bat [version] [target-version-code]
-    echo Example: generate_patch.bat 2.0.1 1
-    echo.
-    echo Parameters:
-    echo   version           - Patch version (e.g., 2.0.1)
-    echo   target-version-code - Version code of BASE APK (currently installed on users)
+REM Check if APK exists
+if not exist "build\app\outputs\flutter-apk\app-release.apk" (
+    echo [ERROR] APK not found: build\app\outputs\flutter-apk\app-release.apk
+    echo Please run build.bat first to build the APK.
     pause
     exit /b 1
 )
 
-if "%TARGET_VERSION_CODE%"=="" (
-    echo [ERROR] Missing target-version-code!
-    echo Usage: generate_patch.bat [version] [target-version-code]
-    pause
-    exit /b 1
-)
+REM =============================================
+REM READ CURRENT VALUES
+REM =============================================
+echo $n = '%RANDOM%' > gen_patch.ps1
+echo $c = Get-Content 'lib\core\config\app_version.dart' -Raw >> gen_patch.ps1
+echo $v = [regex]::Match($c, "version\s*=\s*'([^']+)'").Groups[1].Value >> gen_patch.ps1
+echo $a = [regex]::Match($c, 'appVersionCode\s*=\s*(\d+);').Groups[1].Value >> gen_patch.ps1
+echo Write-Host "VERSION=$v" >> gen_patch.ps1
+echo Write-Host "APP_CODE=$a" >> gen_patch.ps1
 
-echo Patch Version: %PATCH_VERSION%
-echo Target Version Code: %TARGET_VERSION_CODE%
+powershell -ExecutionPolicy Bypass -File gen_patch.ps1 > patch_info.tmp 2>&1
+del gen_patch.ps1
+
+for /f "tokens=1,* delims==" %%A in ('findstr "VERSION=" patch_info.tmp') do set "CURRENT_VERSION=%%B"
+for /f "tokens=1,* delims==" %%A in ('findstr "APP_CODE=" patch_info.tmp') do set "APP_VERSION_CODE=%%B"
+del patch_info.tmp
+
+REM Trim whitespace
+set CURRENT_VERSION=%CURRENT_VERSION: =%
+set APP_VERSION_CODE=%APP_VERSION_CODE: =%
+
+echo Current APK Info:
+echo   Version: %CURRENT_VERSION%
+echo   AppVersionCode: %APP_VERSION_CODE%
 echo.
 
-REM Clean dist folder
-echo [1/4] Cleaning dist folder...
-if exist "dist" rmdir /s /q "dist"
-if exist "output" rmdir /s /q "output"
+REM =============================================
+REM PATCH COUNT MANAGEMENT
+REM =============================================
+REM Store patch count per appVersionCode in a simple file
+set "PATCH_COUNT_FILE=patch_counts.txt"
 
-REM Build release APK
-echo [2/4] Building release APK...
-flutter build apk --release --target-platform android-arm64
+REM Check if we have existing patch count for this appVersionCode
+set "FOUND_PATCH_COUNT="
 
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Build failed!
-    pause
-    exit /b 1
+if exist "%PATCH_COUNT_FILE%" (
+    for /f "tokens=1,2 delims=," %%A in ('findstr /C:"%APP_VERSION_CODE%," %PATCH_COUNT_FILE%') do (
+        if "%%A"=="%APP_VERSION_CODE%" (
+            set "FOUND_PATCH_COUNT=%%B"
+        )
+    )
 )
 
-REM Generate patch
-echo [3/4] Generating patch...
-dart run flutter_patcher:pack ^
-  --apk build\app\outputs\flutter-apk\app-release.apk ^
-  --version %PATCH_VERSION% ^
-  --target-version-code %TARGET_VERSION_CODE%
+if defined FOUND_PATCH_COUNT (
+    set /a PATCH_NUM = FOUND_PATCH_COUNT + 1
+    echo [INFO] Previous patches found for this version: %FOUND_PATCH_COUNT%
+    echo [INFO] Auto-incrementing patch number to: %PATCH_NUM%
+) else (
+    set PATCH_NUM=1
+    echo [INFO] First patch for this version
+    echo [INFO] Patch number: %PATCH_NUM%
+)
+
+echo.
+
+REM Update patch count file
+if exist "%PATCH_COUNT_FILE%" (
+    powershell -Command "(Get-Content '%PATCH_COUNT_FILE%' -Raw) -replace '%APP_VERSION_CODE%,\d+', '' | Set-Content '%PATCH_COUNT_FILE%'"
+)
+echo %APP_VERSION_CODE%,%PATCH_NUM% >> %PATCH_COUNT_FILE% 2>nul
+
+REM =============================================
+REM GENERATE PATCH INFO
+REM =============================================
+set PATCH_VERSION=%CURRENT_VERSION%.%PATCH_NUM%
+set OUTPUT_NAME=silatar_v2_patch_%PATCH_VERSION%
+
+echo.
+echo Patch Info:
+echo   Patch Version: %PATCH_VERSION%
+echo   AppVersionCode: %APP_VERSION_CODE%
+echo   Output: output\%OUTPUT_NAME%.zip
+echo.
+
+REM =============================================
+REM GENERATE PATCH
+REM =============================================
+echo [1/3] Cleaning dist folder...
+if exist "dist" rmdir /s /q "dist"
+
+echo [2/3] Generating patch...
+call dart run flutter_patcher:pack --apk build\app\outputs\flutter-apk\app-release.apk --version %PATCH_VERSION% --target-version-code %APP_VERSION_CODE%
 
 if errorlevel 1 (
     echo.
@@ -63,17 +105,14 @@ if errorlevel 1 (
 
 REM Copy to output folder
 echo.
-echo [4/4] Copying to output folder...
+echo [3/3] Copying to output folder...
 if not exist "output" mkdir "output"
 if exist "dist\patch.zip" (
-    copy /Y "dist\patch.zip" "output\silatar_v2_patch_%PATCH_VERSION%.zip"
-)
+    copy /Y "dist\patch.zip" "output\%OUTPUT_NAME%.zip" >nul
 
-REM Show MD5
-if exist "output\silatar_v2_patch_%PATCH_VERSION%.zip" (
     echo.
-    echo Calculating MD5...
-    powershell -command "(Get-FileHash 'output\silatar_v2_patch_%PATCH_VERSION%.zip' -Algorithm MD5).Hash"
+    echo MD5 hash:
+    powershell -command "(Get-FileHash 'output\%OUTPUT_NAME%.zip' -Algorithm MD5).Hash"
 )
 
 REM Show manifest
@@ -85,15 +124,15 @@ if exist "dist\manifest.json" (
 
 echo.
 echo ============================================
-echo  Patch Generated!
+echo  Done!
 echo ============================================
+echo Output: output\%OUTPUT_NAME%.zip
 echo.
-echo Patch file: output\silatar_v2_patch_%PATCH_VERSION%.zip
-echo Manifest:   dist\manifest.json
+echo Upload to backend with:
+echo   - version: %PATCH_VERSION%
+echo   - app_version_code: %APP_VERSION_CODE%
+echo   - patch_count: %PATCH_NUM%
 echo.
-echo Next steps:
-echo 1. Upload patch.zip to: storage\app\patches\
-echo 2. Create new patch record in admin panel
-echo 3. Or use API: POST /api/admin/patches
-echo.
+echo Note: patch_count akan di-reset ke 1 jika user install APK baru
+echo       karena appVersionCode akan berubah.
 pause

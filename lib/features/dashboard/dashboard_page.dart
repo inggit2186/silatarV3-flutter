@@ -6,6 +6,7 @@ import '../../core/utils/responsive.dart';
 import '../../core/models/user_model.dart';
 import '../../core/services/api_service.dart';
 import '../../core/config/app_version.dart';
+import '../../core/services/patch_service.dart';
 import '../layanan/layanan_page.dart';
 import '../pengajuan/pengajuan_page.dart';
 import '../profile/profile_page.dart';
@@ -860,10 +861,17 @@ class _DashboardPageState extends State<DashboardPage> with SingleTickerProvider
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoItem(
-              icon: Icons.apps_rounded,
-              title: 'SILATAR V2',
-              desc: 'Versi ${AppVersion.full}',
+            FutureBuilder<({String version, int versionCode})>(
+              future: PatchService.instance.getCurrentVersionInfo(),
+              builder: (context, snapshot) {
+                final versionText = snapshot.data?.version ?? AppVersion.version;
+                final buildNumber = snapshot.data?.versionCode ?? AppVersion.appVersionCode;
+                return _buildInfoItem(
+                  icon: Icons.apps_rounded,
+                  title: 'SILATAR V2',
+                  desc: 'Versi v$versionText (build $buildNumber)',
+                );
+              },
             ),
             SizedBox(height: Responsive.spacing(12)),
             _buildInfoItem(

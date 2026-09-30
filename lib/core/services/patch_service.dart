@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_patcher/flutter_patcher.dart';
 import 'package:http/http.dart' as http;
@@ -8,20 +9,29 @@ import '../config/app_version.dart';
 /// Service untuk hot code push menggunakan flutter_patcher
 /// Update kode Dart tanpa perlu reinstall APK
 ///
-/// Requirements:
-/// - Android only
-/// - minSdk: 24
-/// - compileSdk: 36
-/// - NDK: 27.0.12077973+
+/// Versioning: Hybrid approach
+/// - appVersionCode (integer): dari app_version.dart, tidak bisa diubah oleh patch
+/// - patchCount (integer): counter patch, disimpan di SharedPreferences
+///
+/// Format version: major.version.patchCount
+/// Contoh:
+/// - APK 2.0.0 (appVersionCode=0, patchCount=0) → "2.0.0.0"
+/// - APK 2.0.0 + 2 patches (patchCount=2) → "2.0.0.2"
+/// - APK 2.0.1 (appVersionCode=1, patchCount=0) → "2.0.1.0"
 class PatchService {
   static PatchService? _instance;
   static PatchService get instance => _instance ??= PatchService._();
 
   PatchService._();
 
-  static const String _keyAppliedVersionCode = 'applied_version_code';
+  // SharedPreferences keys
+  static const String _keyPatchCount = 'patch_count';
+  static const String _keyAppVersionCodeAtPatch = 'app_version_code_at_patch';
+  static const String _keyPatchPending = 'patch_pending';
+
   bool _isInitialized = false;
-  int _appliedVersionCode = 1;
+  int _patchCount = 0;
+  bool _patchPending = false;
 
   /// Base URL API - sesuai dengan backend Laravel
   static const String _baseUrl = 'https://kemenagtanahdatar.id/api';
@@ -29,16 +39,9 @@ class PatchService {
   /// Endpoint untuk cek patch/update
   static const String _patchCheckUrl = '$_baseUrl/patch/check';
 
-  /// Current app version string from AppVersion config
-  String get _appVersion => AppVersion.display;
-
-  /// Base version code dari APK - dari AppVersion config
-  int get _baseVersionCode => AppVersion.baseVersionCode;
-
   /// Initialize flutter_patcher
   Future<void> initialize() async {
-    // Always load version code from storage (SharedPreferences is cached, so it's fast)
-    await _loadVersionCode();
+    await _loadState();
 
     if (_isInitialized) return;
 
@@ -46,55 +49,131 @@ class PatchService {
       await FlutterPatcher.init();
       _isInitialized = true;
       debugPrint('[PatchService] Initialized');
-      debugPrint('[PatchService] Current version: ${FlutterPatcher.currentVersion}');
+
+      // Promote pending patch if loaded
+      await _promotePendingIfLoaded();
     } catch (e) {
       debugPrint('[PatchService] Failed to initialize: $e');
     }
   }
 
-  /// Load applied version code from SharedPreferences
-  /// Always reads from storage to ensure we have the latest value
-  Future<void> _loadVersionCode() async {
+  /// Load state dari SharedPreferences
+  Future<void> _loadState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final storedVersion = prefs.getInt(_keyAppliedVersionCode);
-      _appliedVersionCode = storedVersion ?? _baseVersionCode;
-      debugPrint('[PatchService] Loaded version code from storage: $_appliedVersionCode (stored: $storedVersion)');
+      _patchCount = prefs.getInt(_keyPatchCount) ?? 0;
+      _patchPending = prefs.getBool(_keyPatchPending) ?? false;
+
+      debugPrint('[PatchService] Loaded: patchCount=$_patchCount pending=$_patchPending');
+
+      // Cek apakah APK sudah di-upgrade sejak patch terakhir di-apply
+      await _checkApkUpgrade();
     } catch (e) {
-      debugPrint('[PatchService] Failed to load version code: $e');
+      debugPrint('[PatchService] Failed to load state: $e');
     }
   }
 
-  /// Get current version code (from applied patch or base)
-  /// Always reads from SharedPreferences to get latest value
-  Future<int> get currentVersionCode async {
-    await _loadVersionCode();
-    return _appliedVersionCode;
+  /// Cek apakah APK sudah di-upgrade sejak patch terakhir
+  /// Jika appVersionCode di SharedPreferences != appVersionCode saat ini,
+  /// berarti APK sudah di-upgrade dan patch state harus di-reset
+  Future<void> _checkApkUpgrade() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedAppVersionCode = prefs.getInt(_keyAppVersionCodeAtPatch);
+      final currentAppVersionCode = AppVersion.appVersionCode;
+
+      debugPrint('[PatchService] ===== APK UPGRADE CHECK =====');
+      debugPrint('[PatchService] storedAppVersionCode: $storedAppVersionCode');
+      debugPrint('[PatchService] currentAppVersionCode: $currentAppVersionCode');
+
+      if (storedAppVersionCode != null && storedAppVersionCode != currentAppVersionCode) {
+        // APK berbeda dengan saat patch di-apply — reset state
+        debugPrint('[PatchService] APK upgraded! Clearing patch state...');
+
+        await FlutterPatcher.rollback();
+        await prefs.remove(_keyPatchCount);
+        await prefs.remove(_keyPatchPending);
+        await prefs.remove(_keyAppVersionCodeAtPatch);
+
+        _patchCount = 0;
+        _patchPending = false;
+
+        debugPrint('[PatchService] Patch state cleared');
+      } else {
+        debugPrint('[PatchService] No APK upgrade detected');
+      }
+      debugPrint('[PatchService] ===== END CHECK =====');
+    } catch (e) {
+      debugPrint('[PatchService] _checkApkUpgrade failed: $e');
+    }
   }
 
-  /// Legacy getter for synchronous access (returns cached value)
-  int get appliedVersionCode => _appliedVersionCode;
+  /// Promote pending patch ke applied setelah restart
+  Future<void> _promotePendingIfLoaded() async {
+    if (!_patchPending) return;
 
-  /// Check dan apply patch jika tersedia
+    try {
+      final installedVersion = await FlutterPatcher.currentVersion;
+      if (installedVersion != null && installedVersion.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_keyPatchPending, false);
+        _patchPending = false;
+        debugPrint('[PatchService] Pending patch promoted to applied');
+      }
+    } catch (e) {
+      debugPrint('[PatchService] _promotePendingIfLoaded failed: $e');
+    }
+  }
+
+  /// Get full version string: major.version.patchCount
+  String getFullVersion() {
+    return '2.${AppVersion.version}.$_patchCount';
+  }
+
+  /// Get version info untuk display
+  Future<({String version, int patchCount})> getVersionInfo() async {
+    await _loadState();
+    return (version: getFullVersion(), patchCount: _patchCount);
+  }
+
+  /// Get current version info (for display in UI)
+  /// Returns: version string with patch count (e.g., "2.0.0.0") and appVersionCode
+  Future<({String version, int versionCode})> getCurrentVersionInfo() async {
+    await _loadState();
+    return (version: getFullVersion(), versionCode: AppVersion.appVersionCode);
+  }
+
+  /// Get patchCount untuk dikirim ke server
+  int get patchCount => _patchCount;
+
+  /// Get current appVersionCode (sync getter)
+  /// Returns AppVersion.appVersionCode
+  int get currentVersionCode => AppVersion.appVersionCode;
+
+  /// Get current version string (sync getter)
+  /// Returns full version with patch count
+  String get currentVersion => getFullVersion();
+
+  /// Check dan apply patch
   Future<PatchResult> checkAndApplyPatch({
     required String patchVersion,
     required String patchMd5,
     required String patchUrl,
     required int patchVersionCode,
   }) async {
-    // Ensure version code is loaded
-    await _loadVersionCode();
+    await _loadState();
 
     if (!_isInitialized) {
       await initialize();
     }
 
     try {
+      // targetVersionCode harus = appVersionCode dari APK saat ini
       final patchInfo = PatchInfo(
         version: patchVersion,
         patchUrl: patchUrl,
         md5: patchMd5,
-        targetVersionCode: _appliedVersionCode,
+        targetVersionCode: AppVersion.appVersionCode,
       );
 
       final result = await FlutterPatcher.applyPatch(patchInfo);
@@ -102,11 +181,21 @@ class PatchService {
       if (result.ok) {
         debugPrint('[PatchService] Patch applied: $patchVersion');
 
-        // Simpan version_code ke SharedPreferences
+        // Simpan state
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt(_keyAppliedVersionCode, patchVersionCode);
-        _appliedVersionCode = patchVersionCode;
-        debugPrint('[PatchService] Saved applied version code: $patchVersionCode');
+
+        // Simpan appVersionCode saat patch ini di-apply
+        await prefs.setInt(_keyAppVersionCodeAtPatch, AppVersion.appVersionCode);
+
+        // Increment patchCount
+        _patchCount++;
+        await prefs.setInt(_keyPatchCount, _patchCount);
+
+        // Set pending (akan di-promote setelah restart)
+        _patchPending = true;
+        await prefs.setBool(_keyPatchPending, true);
+
+        debugPrint('[PatchService] Patch count: $_patchCount');
 
         return PatchResult(
           success: true,
@@ -137,6 +226,16 @@ class PatchService {
 
     try {
       await FlutterPatcher.rollback();
+
+      // Reset patch count
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyPatchCount);
+      await prefs.remove(_keyPatchPending);
+      await prefs.remove(_keyAppVersionCodeAtPatch);
+
+      _patchCount = 0;
+      _patchPending = false;
+
       debugPrint('[PatchService] Rollback successful');
       return PatchResult(
         success: true,
@@ -152,38 +251,23 @@ class PatchService {
     }
   }
 
-  /// Get current patch version
-  Future<String?> get currentVersion => FlutterPatcher.currentVersion;
-
-  /// Check apakah ada patch aktif
-  bool hasActivePatch = false;
-
-  /// Get status info
-  Map<String, dynamic> get status => {
-        'initialized': _isInitialized,
-        'serverUrl': _baseUrl,
-        'baseVersionCode': _baseVersionCode,
-        'appliedVersionCode': _appliedVersionCode,
-        'appVersion': _appVersion,
-      };
-
   /// Check for available patch from server
-  /// Returns AppPatchInfo if update available, null otherwise
   Future<AppPatchInfo?> checkForPatch() async {
     try {
-      // Get current version code (async to ensure latest value)
-      final currentCode = await currentVersionCode;
+      await _loadState();
+      final version = getFullVersion();
+      final patchCountToSend = _patchPending ? _patchCount - 1 : _patchCount;
 
       final response = await http.get(
-        Uri.parse('$_patchCheckUrl?version=$_appVersion&version_code=$currentCode'),
+        Uri.parse('$_patchCheckUrl?version=$version&patch_count=$patchCountToSend&app_version_code=${AppVersion.appVersionCode}'),
         headers: {'Accept': 'application/json'},
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final json = jsonDecode(response.body);
 
-        if (data['hasUpdate'] == true || data['needUpdate'] == true) {
-          return AppPatchInfo.fromCheckUpdateResponse(data);
+        if (json['hasUpdate'] == true || json['needUpdate'] == true) {
+          return AppPatchInfo.fromCheckUpdateResponse(json);
         }
       }
 
@@ -192,25 +276,6 @@ class PatchService {
       debugPrint('[PatchService] Error checking for patch: $e');
       return null;
     }
-  }
-
-  /// Check and apply patch automatically
-  Future<PatchResult> checkAndApply() async {
-    final patchInfo = await checkForPatch();
-
-    if (patchInfo == null) {
-      return PatchResult(
-        success: true,
-        message: 'Tidak ada patch tersedia.',
-      );
-    }
-
-    return checkAndApplyPatch(
-      patchVersion: patchInfo.version,
-      patchMd5: patchInfo.md5,
-      patchUrl: patchInfo.downloadUrl,
-      patchVersionCode: patchInfo.versionCode,
-    );
   }
 }
 
@@ -227,13 +292,13 @@ class PatchResult {
   });
 }
 
-/// Patch info untuk apply patch
-/// Diparse dari API response
+/// Patch info dari API response
 class AppPatchInfo {
   final String version;
   final String md5;
   final String downloadUrl;
   final int versionCode;
+  final int patchCount;
   final int fileSize;
   final String changelog;
   final bool isMandatory;
@@ -243,30 +308,19 @@ class AppPatchInfo {
     required this.md5,
     required this.downloadUrl,
     this.versionCode = 0,
+    this.patchCount = 0,
     this.fileSize = 0,
     this.changelog = '',
     this.isMandatory = false,
   });
 
-  factory AppPatchInfo.fromJson(Map<String, dynamic> json) {
-    return AppPatchInfo(
-      version: json['latestVersion'] ?? json['version'] ?? '',
-      md5: json['md5'] ?? '',
-      downloadUrl: json['downloadUrl'] ?? json['patchUrl'] ?? json['download_url'] ?? '',
-      versionCode: json['version_code'] ?? 0,
-      fileSize: json['fileSize'] ?? 0,
-      changelog: json['changelog'] ?? '',
-      isMandatory: json['isMandatory'] ?? json['is_mandatory'] ?? false,
-    );
-  }
-
-  /// Parse dari API check update response
   factory AppPatchInfo.fromCheckUpdateResponse(Map<String, dynamic> json) {
     return AppPatchInfo(
       version: json['latestVersion'] ?? '',
       md5: json['md5'] ?? '',
       downloadUrl: json['downloadUrl'] ?? json['patchUrl'] ?? '',
       versionCode: json['version_code'] ?? 0,
+      patchCount: json['patch_count'] ?? 0,
       fileSize: json['fileSize'] ?? 0,
       changelog: json['changelog'] ?? '',
       isMandatory: json['isMandatory'] ?? json['is_mandatory'] ?? false,
