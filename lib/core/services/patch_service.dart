@@ -257,7 +257,8 @@ class PatchService {
   Future<AppPatchInfo?> checkForPatch() async {
     try {
       await _loadState();
-      final version = getFullVersion();
+      // Base version tanpa patchCount untuk backend matching
+      final version = AppVersion.version;
       final patchCountToSend = _patchPending ? _patchCount - 1 : _patchCount;
 
       final response = await http.get(

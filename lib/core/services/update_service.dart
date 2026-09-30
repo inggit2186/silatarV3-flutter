@@ -48,24 +48,23 @@ class UpdateService {
     int? customVersionCode,
   }) async {
     try {
-      // Ambil versi efektif yang sedang berjalan (termasuk patch), bukan
-      // base APK version. Agar server tidak menawarkan patch yang sudah
-      // di-apply.
-      final version = customVersion ?? PatchService.instance.currentVersion;
+      // Base version (tanpa patchCount) untuk patch matching di backend
+      // patchCount dikirim terpisah untuk filtering
+      final baseVersion = customVersion ?? AppVersion.version;
       final versionCode = customVersionCode ?? PatchService.instance.currentVersionCode;
       final patchCount = PatchService.instance.patchCount;
       final buildNumber = PatchService.instance.buildNumber;
 
       debugPrint('[UpdateService] ==================================');
       debugPrint('[UpdateService] Checking for updates...');
-      debugPrint('[UpdateService] Current: v$version ($versionCode), patchCount=$patchCount, buildNumber=$buildNumber');
+      debugPrint('[UpdateService] Current: v$baseVersion ($versionCode), patchCount=$patchCount, buildNumber=$buildNumber');
       debugPrint('[UpdateService] API URL: $_checkUrl');
       debugPrint('[UpdateService] ==================================');
 
       final response = await _dio.get(
         _checkUrl,
         queryParameters: {
-          'version': version,
+          'version': baseVersion,
           'patch_count': patchCount,
           'app_version_code': versionCode,
           'build_number': buildNumber,
