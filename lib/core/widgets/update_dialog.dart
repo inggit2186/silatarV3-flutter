@@ -1049,33 +1049,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
                     ),
                   ),
                 ],
-                SizedBox(height: Responsive.spacing(12)),
-                Container(
-                  padding: EdgeInsets.all(Responsive.spacing(10)),
-                  decoration: BoxDecoration(
-                    color: NeoMiraiColors.gold.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(Responsive.radius(12)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.refresh_rounded,
-                        size: 18,
-                        color: NeoMiraiColors.gold,
-                      ),
-                      SizedBox(width: Responsive.spacing(8)),
-                      Expanded(
-                        child: Text(
-                          'Restart aplikasi untuk melihat perubahan',
-                          style: TextStyle(
-                            fontSize: Responsive.fontSize(11),
-                            color: NeoMiraiColors.gold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -1271,15 +1244,6 @@ class _UpdateDialogState extends State<UpdateDialog> {
             _progress = 1.0;
             _statusText = 'Update berhasil!';
           });
-
-          // Auto-restart after short delay for mandatory updates
-          if (_isMandatory) {
-            await Future.delayed(const Duration(seconds: 3));
-            if (mounted) {
-              Navigator.pop(context);
-              widget.onRestart?.call();
-            }
-          }
         } else {
           setState(() {
             _status = UpdateDialogStatus.error;
