@@ -20,7 +20,7 @@ class ProfileContent extends StatelessWidget {
     final user = context.watch<UserProvider>().user;
 
     return Container(
-      decoration: BoxDecoration(gradient: NeoMiraiTheme.paperGradient),
+      color: Colors.transparent,
       child: SafeArea(
         child: SingleChildScrollView(
           child: Column(

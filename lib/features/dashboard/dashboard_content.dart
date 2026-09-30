@@ -61,9 +61,7 @@ class _DashboardContentState extends State<DashboardContent> {
     final user = context.watch<UserProvider>().user;
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: NeoMiraiTheme.paperGradient,
-      ),
+      color: Colors.transparent,
       child: SafeArea(
         child: Column(
           children: [

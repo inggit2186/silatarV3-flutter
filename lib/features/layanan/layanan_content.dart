@@ -55,7 +55,7 @@ class _LayananContentState extends State<LayananContent> {
     final bool isTablet = context.isTablet;
 
     return Container(
-      decoration: BoxDecoration(gradient: NeoMiraiTheme.paperGradient),
+      color: Colors.transparent,
       child: SafeArea(
         child: Column(
           children: [

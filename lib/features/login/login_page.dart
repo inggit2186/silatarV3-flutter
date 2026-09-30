@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
@@ -24,370 +23,115 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   bool _isLoading = false;
   bool _rememberMe = false;
 
-  late AnimationController _floatController;
-  late Animation<double> _floatAnimation;
+  late AnimationController _fadeController;
 
   @override
   void initState() {
     super.initState();
-    _floatController = AnimationController(
-      duration: const Duration(seconds: 3),
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
       vsync: this,
-    )..repeat(reverse: true);
-
-    _floatAnimation = Tween<double>(begin: -6, end: 6).animate(
-      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
-    );
+    )..forward();
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _floatController.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Initialize responsive
     Responsive.init(context);
 
-    final isLandscape = context.isLandscape;
-
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: NeoMiraiTheme.paperGradient,
-        ),
-        child: SafeArea(
-          child: isLandscape
-              ? _buildLandscapeLayout(context)
-              : _buildPortraitLayout(context),
-        ),
-      ),
-    );
-  }
-
-  /// Portrait Layout (Phone vertical)
-  Widget _buildPortraitLayout(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: Responsive.horizontalPadding,
-        ),
-        child: Column(
-          children: [
-            SizedBox(height: Responsive.verticalPadding * 2),
-
-            // Back Button & Header
-            _buildHeader(context)
-                .animate()
-                .fadeIn(duration: 500.ms)
-                .slideX(begin: -0.2, end: 0),
-
-            SizedBox(height: Responsive.spacing(16)),
-
-            // Floating Illustration
-            AnimatedBuilder(
-              animation: _floatAnimation,
-              builder: (context, child) {
-                return Transform.translate(
-                  offset: Offset(0, _floatAnimation.value),
-                  child: child,
-                );
-              },
-              child: _buildIllustration(context)
-                  .animate()
-                  .fadeIn(delay: 200.ms, duration: 600.ms)
-                  .scale(
-                    begin: const Offset(0.9, 0.9),
-                    end: const Offset(1, 1),
-                    curve: Curves.elasticOut,
-                  ),
-            ),
-
-            SizedBox(height: Responsive.spacing(20)),
-
-            // Login Card
-            _buildLoginCard(context)
-                .animate()
-                .fadeIn(delay: 400.ms, duration: 600.ms)
-                .slideY(begin: 0.1, end: 0),
-
-            SizedBox(height: Responsive.spacing(20)),
-
-            // Register Link
-            _buildRegisterLink(context)
-                .animate()
-                .fadeIn(delay: 600.ms, duration: 500.ms),
-
-            SizedBox(height: Responsive.spacing(24)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Landscape Layout (Phone horizontal)
-  Widget _buildLandscapeLayout(BuildContext context) {
-    return Row(
-      children: [
-        // Left side - Illustration
-        Expanded(
-          flex: 1,
-          child: AnimatedBuilder(
-            animation: _floatAnimation,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _floatAnimation.value),
-                child: child,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background Image (WebP - optimized)
+          Image.asset(
+            'assets/images/login_bg.webp',
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback gradient if image not found
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: NeoMiraiTheme.paperGradient,
+                ),
               );
             },
-            child: _buildIllustrationLandscape(context)
-                .animate()
-                .fadeIn(delay: 200.ms, duration: 600.ms),
           ),
-        ),
 
-        // Right side - Form
-        Expanded(
-          flex: 1,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Padding(
-              padding: EdgeInsets.all(Responsive.spacing(16)),
-              child: Column(
-                children: [
-                  // Back Button
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: _buildBackButton(context),
-                  ),
+          // Dark overlay for better readability
+          Container(
+            color: Colors.black.withValues(alpha: 0.2),
+          ),
 
-                  SizedBox(height: Responsive.spacing(8)),
-
-                  _buildLoginCard(context)
-                      .animate()
-                      .fadeIn(delay: 300.ms, duration: 600.ms)
-                      .slideY(begin: 0.1, end: 0),
-
-                  SizedBox(height: Responsive.spacing(16)),
-
-                  _buildRegisterLink(context)
-                      .animate()
-                      .fadeIn(delay: 500.ms, duration: 500.ms),
-                ],
+          // Content - Centered Login Form
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.symmetric(
+                  horizontal: Responsive.spacing(24),
+                  vertical: Responsive.spacing(16),
+                ),
+                child: FadeTransition(
+                  opacity: _fadeController,
+                  child: _buildLoginCard(context),
+                ),
               ),
             ),
           ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        // Back Button
-        _buildBackButton(context),
-
-        const Spacer(),
-
-        // Logo Badge
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: Responsive.spacing(10),
-            vertical: Responsive.spacing(6),
-          ),
-          decoration: BoxDecoration(
-            color: NeoMiraiColors.rice,
-            borderRadius: BorderRadius.circular(Responsive.radius(12)),
-            border: Border.all(
-              color: NeoMiraiColors.line.withValues(alpha: 0.5),
+          // Back Button (Top Left)
+          Positioned(
+            top: 0,
+            left: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.all(Responsive.spacing(16)),
+                child: _buildBackButton(context),
+              ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: NeoMiraiColors.ink.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(Responsive.radius(6)),
-                child: Image.asset(
-                  'assets/images/logo.webp',
-                  width: Responsive.iconSize(30),
-                  height: Responsive.iconSize(30),
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      padding: EdgeInsets.all(Responsive.radius(4)),
-                      decoration: BoxDecoration(
-                        gradient: NeoMiraiTheme.goldGradient,
-                        borderRadius: BorderRadius.circular(Responsive.radius(6)),
-                      ),
-                      child: Icon(
-                        Icons.account_balance_rounded,
-                        size: Responsive.iconSize(16),
-                        color: NeoMiraiColors.rice,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(width: Responsive.spacing(8)),
-              Text(
-                'SILATAR',
-                style: TextStyle(
-                  fontSize: Responsive.fontSize(13),
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                  color: NeoMiraiColors.gold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildBackButton(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: NeoMiraiColors.rice,
-        borderRadius: BorderRadius.circular(Responsive.radius(12)),
-        border: Border.all(
-          color: NeoMiraiColors.line.withValues(alpha: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: NeoMiraiColors.ink.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: () => Navigator.pop(context),
-        icon: Icon(
-          Icons.arrow_back_ios_new_rounded,
-          size: Responsive.iconSize(18),
-          color: NeoMiraiColors.ink,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIllustration(BuildContext context) {
-    final isSmallPhone = context.isSmallPhone;
-    final logoSize = Responsive.iconSize(isSmallPhone ? 60 : 70);
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Logo
-        Image.asset(
-          'assets/images/logo.webp',
-          width: logoSize,
-          height: logoSize,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Icon(
-              Icons.account_balance_rounded,
-              size: logoSize,
-              color: NeoMiraiColors.gold,
-            );
-          },
-        ),
-        SizedBox(height: Responsive.spacing(12)),
-        // SILATAR - Bold Text with Glow
-        Text(
-          'SILATAR',
-          style: TextStyle(
-            fontFamily: 'Chakra Petch',
-            fontSize: Responsive.fontSize(32),
-            fontWeight: FontWeight.w800,
-            color: NeoMiraiColors.ink,
-            letterSpacing: 6,
-            shadows: [
-              Shadow(
-                color: NeoMiraiColors.gold.withValues(alpha: 0.6),
-                offset: const Offset(0, 0),
-                blurRadius: 20,
-              ),
-              Shadow(
-                color: Colors.black12,
-                offset: const Offset(0, 2),
-                blurRadius: 6,
-              ),
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Container(
+        width: Responsive.iconSize(44),
+        height: Responsive.iconSize(44),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              NeoMiraiColors.gold.withValues(alpha: 0.9),
+              NeoMiraiColors.gold,
             ],
           ),
+          borderRadius: BorderRadius.circular(Responsive.radius(12)),
+          boxShadow: [
+            BoxShadow(
+              color: NeoMiraiColors.gold.withValues(alpha: 0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildIllustrationLandscape(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.all(Responsive.spacing(16)),
-      decoration: BoxDecoration(
-        gradient: NeoMiraiTheme.nightGradient,
-        borderRadius: BorderRadius.circular(Responsive.radius(24)),
-        border: Border.all(
-          color: NeoMiraiColors.nightSoft.withValues(alpha: 0.5),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: NeoMiraiColors.night.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Image.asset(
-          'assets/images/logo.webp',
-          width: 100,
-          height: 100,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.account_balance_rounded,
-                  size: Responsive.iconSize(50),
-                  color: NeoMiraiColors.gold,
-                ),
-                SizedBox(height: Responsive.spacing(12)),
-                const Text(
-                  'SILATAR',
-                  style: TextStyle(
-                    color: NeoMiraiColors.rice,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 3,
-                  ),
-                ),
-                Text(
-                  'Layanan Agama Tanah Datar',
-                  style: TextStyle(
-                    color: NeoMiraiColors.rice.withValues(alpha: 0.8),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            );
-          },
+        child: Icon(
+          Icons.arrow_back_ios_new_rounded,
+          size: Responsive.iconSize(20),
+          color: NeoMiraiColors.rice,
         ),
       ),
     );
@@ -395,50 +139,27 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
   Widget _buildLoginCard(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(Responsive.cardPadding(24)),
+      padding: EdgeInsets.all(Responsive.spacing(24)),
       decoration: BoxDecoration(
-        color: NeoMiraiColors.rice,
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(Responsive.radius(24)),
         border: Border.all(
-          color: NeoMiraiColors.line.withValues(alpha: 0.5),
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: NeoMiraiColors.ink.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Form(
         key: _formKey,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Title
-            Text(
-              'Selamat Datang! 👋',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: NeoMiraiColors.ink,
-                    fontSize: Responsive.fontSize(18),
-                  ),
-            ),
-            SizedBox(height: Responsive.spacing(6)),
-            Text(
-              'Masukkan email dan password untuk melanjutkan.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: NeoMiraiColors.inkSoft,
-                    height: 1.4,
-                    fontSize: Responsive.fontSize(12),
-                  ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            SizedBox(height: Responsive.spacing(20)),
-
             // Email Field
             NeoTextField(
               controller: _emailController,
@@ -450,7 +171,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 if (value == null || value.isEmpty) {
                   return 'NIP atau Email tidak boleh kosong';
                 }
-                // Accept NIP (digits only) or email (contains @)
                 final isNip = RegExp(r'^[0-9]+$').hasMatch(value);
                 final isEmail = value.contains('@') && value.contains('.');
                 if (!isNip && !isEmail) {
@@ -494,163 +214,150 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 20,
-                        height: 20,
+                        width: 22,
+                        height: 22,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(5),
+                          borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: _rememberMe
                                 ? NeoMiraiColors.gold
-                                : NeoMiraiColors.ash,
-                            width: 1.5,
+                                : Colors.white.withValues(alpha: 0.7),
+                            width: 2,
                           ),
                           color: _rememberMe
                               ? NeoMiraiColors.gold
                               : Colors.transparent,
+                          boxShadow: _rememberMe
+                              ? [
+                                  BoxShadow(
+                                    color: NeoMiraiColors.gold.withValues(alpha: 0.4),
+                                    blurRadius: 8,
+                                  ),
+                                ]
+                              : null,
                         ),
                         child: _rememberMe
                             ? const Icon(
                                 Icons.check_rounded,
-                                size: 14,
-                                color: NeoMiraiColors.rice,
+                                size: 16,
+                                color: Colors.white,
                               )
                             : null,
                       ),
-                      SizedBox(width: Responsive.spacing(8)),
+                      SizedBox(width: Responsive.spacing(10)),
                       Text(
                         'Ingat saya',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: NeoMiraiColors.inkSoft,
-                              fontSize: Responsive.fontSize(11),
-                            ),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: Responsive.fontSize(13),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
                 ),
 
                 // Forgot Password
-                TextButton(
-                  onPressed: () {
-                    _showForgotPasswordDialog(context);
-                  },
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text(
-                    'Lupa password?',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: NeoMiraiColors.gold,
-                          fontWeight: FontWeight.w600,
-                          fontSize: Responsive.fontSize(11),
+                GestureDetector(
+                  onTap: () => _showForgotPasswordDialog(context),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: Responsive.spacing(14),
+                      vertical: Responsive.spacing(6),
+                    ),
+                    decoration: BoxDecoration(
+                      color: NeoMiraiColors.gold,
+                      borderRadius: BorderRadius.circular(Responsive.radius(20)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: NeoMiraiColors.gold.withValues(alpha: 0.5),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
+                      ],
+                    ),
+                    child: Text(
+                      'Lupa Password?',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: Responsive.fontSize(12),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
 
-            SizedBox(height: Responsive.spacing(20)),
+            SizedBox(height: Responsive.spacing(24)),
 
             // Login Button
-            NeoButton(
-              text: 'MASUK',
-              icon: Icons.login_rounded,
-              isLoading: _isLoading,
-              onPressed: _handleLogin,
-            ),
-
-            SizedBox(height: Responsive.spacing(16)),
-
-            // Divider
-            const NeoDivider(text: 'atau'),
-
-            SizedBox(height: Responsive.spacing(16)),
-
-            // Social Login Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: NeoSocialButton(
-                    text: 'Google',
-                    icon: Icons.g_mobiledata_rounded,
-                    color: const Color(0xFFDB4437),
-                    onPressed: () {
-                      _showSnackBar(context, 'Login dengan Google dalam pengembangan');
-                    },
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      NeoMiraiColors.gold,
+                      NeoMiraiColors.gold.withValues(alpha: 0.85),
+                    ],
                   ),
+                  borderRadius: BorderRadius.circular(Responsive.radius(14)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: NeoMiraiColors.gold.withValues(alpha: 0.5),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-                SizedBox(width: Responsive.spacing(10)),
-                Expanded(
-                  child: NeoSocialButton(
-                    text: 'Apple',
-                    icon: Icons.apple_rounded,
-                    color: const Color(0xFF000000),
-                    onPressed: () {
-                      _showSnackBar(context, 'Login dengan Apple dalam pengembangan');
-                    },
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Responsive.radius(14)),
+                    ),
                   ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.login_rounded,
+                              size: Responsive.iconSize(22),
+                              color: Colors.white,
+                            ),
+                            SizedBox(width: Responsive.spacing(10)),
+                            Text(
+                              'MASUK',
+                              style: TextStyle(
+                                fontSize: Responsive.fontSize(15),
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildRegisterLink(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        Text(
-          'Belum punya akun? ',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: NeoMiraiColors.inkSoft,
-              ),
-        ),
-        GestureDetector(
-          onTap: () {
-            _showRegisterInfo(context);
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.spacing(14),
-              vertical: Responsive.spacing(6),
-            ),
-            decoration: BoxDecoration(
-              gradient: NeoMiraiTheme.goldGradient,
-              borderRadius: BorderRadius.circular(Responsive.radius(18)),
-              boxShadow: [
-                BoxShadow(
-                  color: NeoMiraiColors.gold.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Daftar Sekarang',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: NeoMiraiColors.rice,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                SizedBox(width: Responsive.spacing(4)),
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: Responsive.iconSize(14),
-                  color: NeoMiraiColors.rice,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -888,114 +595,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showRegisterInfo(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: NeoMiraiColors.rice,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(Responsive.radius(24))),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.all(Responsive.cardPadding(24)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Handle
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: NeoMiraiColors.ash.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                SizedBox(height: Responsive.spacing(20)),
-
-                // Icon
-                Container(
-                  padding: EdgeInsets.all(Responsive.radius(16)),
-                  decoration: BoxDecoration(
-                    gradient: NeoMiraiTheme.goldGradient,
-                    borderRadius: BorderRadius.circular(Responsive.radius(20)),
-                  ),
-                  child: Icon(
-                    Icons.person_add_outlined,
-                    color: NeoMiraiColors.rice,
-                    size: Responsive.iconSize(40),
-                  ),
-                ),
-                SizedBox(height: Responsive.spacing(16)),
-
-                // Title
-                Text(
-                  'Pendaftaran Warga',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                SizedBox(height: Responsive.spacing(6)),
-                Text(
-                  'Pendaftaran dilakukan melalui website SILATAR.\nSilakan buka website untuk mendaftar.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: NeoMiraiColors.inkSoft,
-                        height: 1.4,
-                      ),
-                ),
-                SizedBox(height: Responsive.spacing(20)),
-
-                // Info Card
-                Container(
-                  padding: EdgeInsets.all(Responsive.radius(14)),
-                  decoration: BoxDecoration(
-                    color: NeoMiraiColors.info.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(Responsive.radius(14)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        color: NeoMiraiColors.info,
-                        size: Responsive.iconSize(20),
-                      ),
-                      SizedBox(width: Responsive.spacing(10)),
-                      Expanded(
-                        child: Text(
-                          'Hubungi admin jika mengalami kesulitan',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: NeoMiraiColors.info,
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: Responsive.spacing(20)),
-
-                // Close Button
-                SizedBox(
-                  width: double.infinity,
-                  child: NeoButton(
-                    text: 'TUTUP',
-                    isOutlined: true,
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ],
             ),
           ),
         ),

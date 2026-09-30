@@ -21,7 +21,7 @@ class AdminSectionPage extends StatelessWidget {
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(gradient: NeoMiraiTheme.paperGradient),
+        color: Colors.transparent,
         child: SafeArea(
           child: Column(
             children: [

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../core/providers/user_provider.dart';
 import '../core/services/api_service.dart';
 import '../core/widgets/persistent_nav_bar.dart';
+import '../core/utils/responsive.dart';
 import 'dashboard/dashboard_content.dart';
 import 'presensi/presensi_content.dart';
 import 'layanan/layanan_content.dart';
@@ -41,18 +42,46 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     final user = context.watch<UserProvider>().user;
     final showAdminTab = AdminSectionPage.hasAdminAccess(user?.role);
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          const DashboardContent(),
-          const PresensiContent(),
-          const LayananContent(),
-          if (showAdminTab) const AdminSectionPage(),
-          const ProfileContent(),
+          // Background Image with 85% opacity
+          Opacity(
+            opacity: 0.85,
+            child: Image.asset(
+              'assets/images/bg.webp',
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[900],
+                );
+              },
+            ),
+          ),
+
+          // White overlay 80%
+          Container(
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
+
+          // Content
+          IndexedStack(
+            index: _currentIndex,
+            children: [
+              const DashboardContent(),
+              const PresensiContent(),
+              const LayananContent(),
+              if (showAdminTab) const AdminSectionPage(),
+              const ProfileContent(),
+            ],
+          ),
         ],
       ),
       bottomNavigationBar: PersistentNavBar(
