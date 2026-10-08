@@ -7,6 +7,7 @@ import '../../core/providers/kegiatan_provider.dart';
 import '../kegiatan/kegiatan_page.dart';
 import '../laporan/laporan_bulanan_page.dart';
 import '../presensi/presensi_page.dart';
+import '../presensi_error/presensi_error_page.dart';
 import '../riwayat/riwayat_presensi_page.dart';
 import '../janji_temu/riwayat_janji_temu_page.dart';
 import '../simpeg/simpeg_reset_password_page.dart';
@@ -291,6 +292,17 @@ class _LayananContentState extends State<LayananContent> {
         context,
         MaterialPageRoute(
           builder: (context) => const AcaraListPage(),
+        ),
+      );
+      return;
+    }
+
+    // Handle Error menu (Presensi Error)
+    if (service.title == 'Error') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PresensiErrorPage(),
         ),
       );
       return;
