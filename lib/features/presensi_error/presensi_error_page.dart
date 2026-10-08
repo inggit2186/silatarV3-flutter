@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/services/api_service.dart';
+import 'presensi_error_history_page.dart';
 
 class PresensiErrorPage extends StatefulWidget {
   const PresensiErrorPage({super.key});
@@ -263,6 +264,20 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
                 Text('Presensi Error', style: TextStyle(fontSize: Responsive.fontSize(17), fontWeight: FontWeight.bold, color: NeoMiraiColors.ink)),
                 Text('Laporkan presensi alternatif', style: TextStyle(fontSize: Responsive.fontSize(11), color: NeoMiraiColors.inkSoft)),
               ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PresensiErrorHistoryPage()),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(Responsive.radius(10)),
+              decoration: BoxDecoration(
+                color: NeoMiraiColors.paperSoft,
+                borderRadius: BorderRadius.circular(Responsive.radius(10)),
+              ),
+              child: Icon(Icons.history_rounded, size: Responsive.iconSize(22), color: NeoMiraiColors.ink),
             ),
           ),
         ],
@@ -700,14 +715,14 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
 
   Future<void> _pickDate() async {
     final DateTime now = DateTime.now();
-    final yesterday = now.subtract(const Duration(days: 7));
+    final yesterday = now.subtract(const Duration(days: 1));
     final firstDate = now.subtract(const Duration(days: 30));
 
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _tanggalLupa ?? yesterday,
       firstDate: firstDate,
-      lastDate: now,
+      lastDate: yesterday,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
