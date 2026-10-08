@@ -1344,6 +1344,39 @@ class ApiService {
     }
   }
 
+  /// Get single acara/event detail
+  Future<ApiResponse<Map<String, dynamic>>> getAcaraDetail(int id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/acara/$id'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final dynamic dataField = body['data'];
+        if (dataField is Map<String, dynamic>) {
+          return ApiResponse.success(dataField);
+        } else {
+          return ApiResponse.error(
+            'Format response tidak valid',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil detail acara',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
   /// Submit attendance (Hadir)
   Future<ApiResponse<Map<String, dynamic>>> submitHadir(int acaraId, {
     required double latitude,
@@ -1408,6 +1441,122 @@ class ApiService {
       } else {
         return ApiResponse.error(
           body['message'] ?? 'Gagal mengirim keterangan',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  // ============ PRESENSI ERROR (Mobile App) ============
+
+  /// Get presensi error status today
+  Future<ApiResponse<Map<String, dynamic>>> getPresensiErrorToday() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/presensi-error/today'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(body['data'] ?? body);
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil data presensi error',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Submit presensi error (Sistem Error / Tugas Luar / Lupa Presensi)
+  Future<ApiResponse<Map<String, dynamic>>> submitPresensiError({
+    required String jenis, // 'masuk' atau 'pulang'
+    required String alasan, // 'SISTEM_ERROR', 'TUGAS_LUAR', 'LUPA_PRESNSI_PUSAKA'
+    String? keteranganTugasLuar,
+    String? tanggalLupa,
+    double? latitude,
+    double? longitude,
+    double? jarakMeter,
+    String? alamat,
+    required String foto, // base64 encoded
+    String? supervisorName,
+    String? supervisorNip,
+    String? unitKerjaManual,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'jenis': jenis,
+        'alasan': alasan,
+        'foto': foto,
+      };
+
+      if (keteranganTugasLuar != null) body['keterangan_tugas_luar'] = keteranganTugasLuar;
+      if (tanggalLupa != null) body['tanggal_lupa'] = tanggalLupa;
+      if (latitude != null) body['latitude'] = latitude;
+      if (longitude != null) body['longitude'] = longitude;
+      if (jarakMeter != null) body['jarak_meter'] = jarakMeter;
+      if (alamat != null) body['alamat'] = alamat;
+      if (supervisorName != null) body['supervisor_name'] = supervisorName;
+      if (supervisorNip != null) body['supervisor_nip'] = supervisorNip;
+      if (unitKerjaManual != null) body['unit_kerja_manual'] = unitKerjaManual;
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/presensi-error'),
+        headers: _headers,
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 60));
+
+      final responseBody = _parseBody(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return ApiResponse.success(
+          responseBody['data'] ?? {},
+          message: responseBody['message'],
+        );
+      } else {
+        return ApiResponse.error(
+          responseBody['message'] ?? 'Gagal mengirim presensi error',
+          statusCode: response.statusCode,
+          errors: _extractErrors(responseBody),
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get presensi error history
+  Future<ApiResponse<Map<String, dynamic>>> getPresensiErrorHistory({int? bulan, int? tahun}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (bulan != null) queryParams['bulan'] = bulan.toString();
+      if (tahun != null) queryParams['tahun'] = tahun.toString();
+
+      final uri = Uri.parse('$_baseUrl/presensi-error/history')
+          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+
+      final response = await http.get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        return ApiResponse.success(body);
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil riwayat presensi error',
           statusCode: response.statusCode,
         );
       }

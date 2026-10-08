@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/services/api_service.dart';
+import '../../core/services/api_config.dart';
 import 'acara_presensi_page.dart';
 
 class AcaraDetailPage extends StatefulWidget {
@@ -33,26 +34,14 @@ class _AcaraDetailPageState extends State<AcaraDetailPage> {
     });
 
     try {
-      final response = await ApiService.instance.getAcaraList();
-      // We need to get the detail from the list or make a separate call
-      if (response.success && response.data != null) {
-        final acaraList = List<Map<String, dynamic>>.from(response.data!);
-        final acara = acaraList.firstWhere(
-          (a) => a['id'] == widget.acaraId,
-          orElse: () => {},
-        );
+      // Use getAcaraDetail instead of getAcaraList to get full detail including foto/filename
+      final response = await ApiService.instance.getAcaraDetail(widget.acaraId);
 
-        if (acara.isNotEmpty) {
-          setState(() {
-            _acara = acara;
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _errorMessage = 'Acara tidak ditemukan';
-            _isLoading = false;
-          });
-        }
+      if (response.success && response.data != null) {
+        setState(() {
+          _acara = response.data;
+          _isLoading = false;
+        });
       } else {
         setState(() {
           _errorMessage = response.message ?? 'Gagal memuat data acara';
@@ -369,7 +358,7 @@ class _AcaraDetailPageState extends State<AcaraDetailPage> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(Responsive.radius(16)),
                 child: Image.network(
-                  'http://127.0.0.1:8000/storage/acara/$filename',
+                  '${ApiConfig.baseUrl.replaceAll('/api', '')}/storage/acara/$filename',
                   width: double.infinity,
                   height: 200,
                   fit: BoxFit.cover,
