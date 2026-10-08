@@ -708,7 +708,6 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
       initialDate: _tanggalLupa ?? yesterday,
       firstDate: firstDate,
       lastDate: now,
-      locale: const Locale('id', 'ID'),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(

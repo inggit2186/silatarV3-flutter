@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -62,6 +63,16 @@ class SILATARApp extends StatelessWidget {
         title: 'SILATAR V2',
         debugShowCheckedModeBanner: false,
         theme: NeoMiraiTheme.lightTheme,
+        locale: const Locale('id', 'ID'),
+        supportedLocales: const [
+          Locale('id', 'ID'),
+          Locale('en', 'US'),
+        ],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         home: const SplashScreen(),
       ),
     );
@@ -317,7 +328,7 @@ class _SplashScreenState extends State<SplashScreen> {
         ApiService.instance.setToken(token);
       }
 
-      // Fetch fresh user data from API
+      // Try to fetch fresh user data from API
       final response = await ApiService.instance.getProfile();
 
       if (response.success && response.data != null && mounted) {
@@ -337,7 +348,8 @@ class _SplashScreenState extends State<SplashScreen> {
         return;
       }
 
-      // API failed - use cached data
+      // API failed (network error or non-401 error) - try to use cached data
+      // This ensures auto-login works even when API is temporarily unavailable
       final userData = await StorageService().getUser();
       if (userData != null && mounted) {
         final user = User.fromJson(userData);
@@ -355,6 +367,9 @@ class _SplashScreenState extends State<SplashScreen> {
         );
         return;
       }
+
+      // Both API failed and no cached data - token might be invalid, go to Welcome
+      debugPrint('[Splash] Auto-login failed: API error and no cached data');
     }
 
     // Not logged in - go to Welcome
