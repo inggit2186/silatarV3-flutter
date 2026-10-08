@@ -181,7 +181,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Check for updates in background
     // Enable check in debug mode for testing (set to true to always check)
-    final bool enableUpdateCheck = true; // Change to false to disable in debug
+    final bool enableUpdateCheck = false; // Disabled in debug mode
     if ((!kDebugMode || enableUpdateCheck) && !_checkedUpdate) {
       _checkedUpdate = true;
       // If mandatory APK is pending, skip update check

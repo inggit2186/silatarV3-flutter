@@ -158,6 +158,13 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
         _showSnackBar(response.message ?? 'Presensi error berhasil disimpan', isError: false);
         _resetForm();
         _loadTodayStatus();
+        // Redirect ke halaman riwayat
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const PresensiErrorHistoryPage()),
+          );
+        }
       } else {
         _showSnackBar(response.message ?? 'Gagal menyimpan', isError: true);
       }
@@ -266,18 +273,27 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
               ],
             ),
           ),
+          // Tombol Riwayat dengan label
           GestureDetector(
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const PresensiErrorHistoryPage()),
             ),
             child: Container(
-              padding: EdgeInsets.all(Responsive.radius(10)),
+              padding: EdgeInsets.symmetric(horizontal: Responsive.spacing(12), vertical: Responsive.spacing(8)),
               decoration: BoxDecoration(
-                color: NeoMiraiColors.paperSoft,
+                color: NeoMiraiColors.gold.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(Responsive.radius(10)),
+                border: Border.all(color: NeoMiraiColors.gold.withValues(alpha: 0.3)),
               ),
-              child: Icon(Icons.history_rounded, size: Responsive.iconSize(22), color: NeoMiraiColors.ink),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.history_rounded, size: Responsive.iconSize(18), color: NeoMiraiColors.gold),
+                  SizedBox(width: Responsive.spacing(6)),
+                  Text('Riwayat', style: TextStyle(fontSize: Responsive.fontSize(11), fontWeight: FontWeight.w600, color: NeoMiraiColors.gold)),
+                ],
+              ),
             ),
           ),
         ],
@@ -716,12 +732,11 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
   Future<void> _pickDate() async {
     final DateTime now = DateTime.now();
     final yesterday = now.subtract(const Duration(days: 1));
-    final firstDate = now.subtract(const Duration(days: 30));
 
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _tanggalLupa ?? yesterday,
-      firstDate: firstDate,
+      firstDate: yesterday,
       lastDate: yesterday,
       builder: (context, child) {
         return Theme(
