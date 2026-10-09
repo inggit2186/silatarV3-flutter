@@ -1553,6 +1553,12 @@ class ApiService {
       final body = _parseBody(response.body);
 
       if (response.statusCode == 200) {
+        // Response structure: {success, message, data: {bulan, tahun, total, data: [...]}}
+        // Extract the nested data array
+        final nestedData = body['data'];
+        if (nestedData is Map && nestedData.containsKey('data')) {
+          return ApiResponse.success(Map<String, dynamic>.from(nestedData));
+        }
         return ApiResponse.success(body);
       } else {
         return ApiResponse.error(
@@ -1565,5 +1571,10 @@ class ApiService {
     } catch (e) {
       return ApiResponse.error('Terjadi kesalahan: $e');
     }
+  }
+
+  /// Get URL for downloading surat keterangan presensi error
+  String getPresensiErrorSuratUrl(int id) {
+    return '$_baseUrl/presensi-error/$id/surat';
   }
 }

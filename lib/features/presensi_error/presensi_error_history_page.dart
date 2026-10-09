@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/theme/neo_mirai_theme.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/services/api_service.dart';
@@ -17,8 +19,6 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
   List<Map<String, dynamic>> _history = [];
   bool _isLoading = true;
   String? _errorMessage;
-  bool _isDownloading = false;
-  String? _downloadingId;
 
   @override
   void initState() {
@@ -101,57 +101,119 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
     }
   }
 
-  Future<void> _downloadSurat(String id) async {
-    setState(() {
-      _isDownloading = true;
-      _downloadingId = id;
-    });
-
+  Future<void> _downloadSurat(int id) async {
     try {
-      final baseUrl = 'https://kemenagtanahdatar.id';
-      final url = Uri.parse('$baseUrl/presensi-error/cetak/$id');
+      final url = ApiService.instance.getPresensiErrorSuratUrl(id);
+      final token = ApiService.instance.token;
 
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
+      if (token == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Row(
+              content: const Text('Silakan login ulang'),
+              backgroundColor: NeoMiraiColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+                SizedBox(width: 12),
+                Text('Mengunduh surat...'),
+              ],
+            ),
+            duration: Duration(seconds: 10),
+          ),
+        );
+      }
+
+      final dio = Dio();
+      final response = await dio.get(
+        url,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        // Save file using path_provider
+        final blob = response.data;
+        final dir = await _getDownloadDirectory();
+        final fileName = 'Surat_Keterangan_Presensi_Error_$id.pdf';
+        final file = File('${dir.path}/$fileName');
+        await file.writeAsBytes(blob);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('Tidak bisa membuka link')),
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Surat tersimpan: $fileName')),
                 ],
               ),
+              backgroundColor: NeoMiraiColors.success,
+              action: SnackBarAction(
+                label: 'Buka',
+                textColor: Colors.white,
+                onPressed: () {
+                  // Open file - can add file opener later
+                },
+              ),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal mengunduh: ${response.statusMessage}'),
               backgroundColor: NeoMiraiColors.error,
-              behavior: SnackBarBehavior.floating,
             ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Gagal download: $e')),
-              ],
-            ),
+            content: Text('Gagal mengunduh: $e'),
             backgroundColor: NeoMiraiColors.error,
-            behavior: SnackBarBehavior.floating,
           ),
         );
       }
-    } finally {
-      setState(() {
-        _isDownloading = false;
-        _downloadingId = null;
-      });
     }
+  }
+
+  Future<Directory> _getDownloadDirectory() async {
+    // For mobile, use downloads directory
+    // This is a simplified version - you may want to use path_provider
+    if (Platform.isAndroid) {
+      final dir = Directory('/storage/emulated/0/Download');
+      if (!await dir.exists()) {
+        return (await getTemporaryDirectory());
+      }
+      return dir;
+    }
+    return await getTemporaryDirectory();
   }
 
   @override
@@ -220,7 +282,7 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Riwayat Presensi Error', style: TextStyle(fontSize: Responsive.fontSize(17), fontWeight: FontWeight.bold, color: NeoMiraiColors.ink)),
-                Text('Daftar pengajuan yang telah dibuat', style: TextStyle(fontSize: Responsive.fontSize(11), color: NeoMiraiColors.inkSoft)),
+                Text('${_history.length} pengajuan', style: TextStyle(fontSize: Responsive.fontSize(11), color: NeoMiraiColors.inkSoft)),
               ],
             ),
           ),
@@ -234,7 +296,7 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
       onRefresh: _loadHistory,
       color: NeoMiraiColors.gold,
       child: ListView.builder(
-        padding: EdgeInsets.all(Responsive.spacing(16)),
+        padding: EdgeInsets.all(Responsive.spacing(12)),
         itemCount: _history.length,
         itemBuilder: (context, index) {
           final item = _history[index];
@@ -249,12 +311,13 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
     final statusColor = _getStatusColor(status);
     final statusIcon = _getStatusIcon(status);
     final statusLabel = _getStatusLabel(status);
+    final id = item['id'] as int?;
 
     String tanggal = '-';
     if (item['tanggal'] != null) {
       try {
         final date = DateTime.parse(item['tanggal'].toString());
-        tanggal = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(date);
+        tanggal = DateFormat('dd MMM yyyy', 'id_ID').format(date);
       } catch (e) {
         tanggal = item['tanggal'].toString();
       }
@@ -262,172 +325,116 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
 
     final mAbsen = item['m_absen'] as String?;
     final pAbsen = item['p_absen'] as String?;
+    final keterangan = item['keterangan'] as String?;
 
     return Container(
-      margin: EdgeInsets.only(bottom: Responsive.spacing(12)),
+      margin: EdgeInsets.only(bottom: Responsive.spacing(8)),
       decoration: BoxDecoration(
         color: NeoMiraiColors.rice,
-        borderRadius: BorderRadius.circular(Responsive.radius(14)),
-        boxShadow: [BoxShadow(color: NeoMiraiColors.ink.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(Responsive.radius(12)),
+        boxShadow: [BoxShadow(color: NeoMiraiColors.ink.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: EdgeInsets.all(Responsive.spacing(14)),
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(Responsive.radius(14))),
-            ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Responsive.radius(12)),
+          onTap: () {},
+          child: Padding(
+            padding: EdgeInsets.all(Responsive.spacing(12)),
             child: Row(
               children: [
+                // Status Icon
                 Container(
-                  padding: EdgeInsets.all(Responsive.radius(8)),
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(Responsive.radius(8)),
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(Responsive.radius(10)),
                   ),
-                  child: Icon(statusIcon, size: Responsive.iconSize(20), color: statusColor),
+                  child: Icon(statusIcon, size: Responsive.iconSize(22), color: statusColor),
                 ),
                 SizedBox(width: Responsive.spacing(12)),
+
+                // Content
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(statusLabel, style: TextStyle(fontSize: Responsive.fontSize(14), fontWeight: FontWeight.w700, color: statusColor)),
-                      SizedBox(height: Responsive.spacing(2)),
-                      Text(tanggal, style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.inkSoft)),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: Responsive.spacing(10), vertical: Responsive.spacing(4)),
-                  decoration: BoxDecoration(
-                    color: NeoMiraiColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(Responsive.radius(20)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.check_circle_rounded, size: 14, color: NeoMiraiColors.success),
-                      SizedBox(width: Responsive.spacing(4)),
-                      Text('Berhasil', style: TextStyle(fontSize: Responsive.fontSize(10), fontWeight: FontWeight.w600, color: NeoMiraiColors.success)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Body
-          Padding(
-            padding: EdgeInsets.all(Responsive.spacing(14)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Waktu
-                Row(
-                  children: [
-                    if (mAbsen != null) ...[
-                      Expanded(
-                        child: Container(
-                          padding: EdgeInsets.all(Responsive.spacing(10)),
-                          decoration: BoxDecoration(
-                            color: NeoMiraiColors.success.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(Responsive.radius(8)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.arrow_upward_rounded, size: Responsive.iconSize(16), color: NeoMiraiColors.success),
-                              SizedBox(width: Responsive.spacing(8)),
-                              Text('Masuk: $mAbsen', style: TextStyle(fontSize: Responsive.fontSize(11), fontWeight: FontWeight.w500, color: NeoMiraiColors.success)),
-                            ],
-                          ),
-                        ),
+                      Row(
+                        children: [
+                          Text(statusLabel, style: TextStyle(fontSize: Responsive.fontSize(13), fontWeight: FontWeight.w700, color: NeoMiraiColors.ink)),
+                          const Spacer(),
+                          Icon(Icons.check_circle, size: 14, color: NeoMiraiColors.success),
+                          SizedBox(width: 4),
+                          Text('Berhasil', style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.success, fontWeight: FontWeight.w500)),
+                        ],
                       ),
-                    ],
-                    if (mAbsen != null && pAbsen != null) SizedBox(width: Responsive.spacing(8)),
-                    if (pAbsen != null)
-                      Expanded(
-                        child: Container(
-                          padding: EdgeInsets.all(Responsive.spacing(10)),
-                          decoration: BoxDecoration(
-                            color: NeoMiraiColors.info.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(Responsive.radius(8)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.arrow_downward_rounded, size: Responsive.iconSize(16), color: NeoMiraiColors.info),
-                              SizedBox(width: Responsive.spacing(8)),
-                              Text('Pulang: $pAbsen', style: TextStyle(fontSize: Responsive.fontSize(11), fontWeight: FontWeight.w500, color: NeoMiraiColors.info)),
-                            ],
-                          ),
-                        ),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today_rounded, size: 12, color: NeoMiraiColors.inkSoft),
+                          SizedBox(width: 4),
+                          Text(tanggal, style: TextStyle(fontSize: Responsive.fontSize(11), color: NeoMiraiColors.inkSoft)),
+                        ],
                       ),
-                  ],
-                ),
-
-                // Keterangan
-                if (item['keterangan'] != null && (item['keterangan'] as String).isNotEmpty) ...[
-                  SizedBox(height: Responsive.spacing(10)),
-                  Container(
-                    padding: EdgeInsets.all(Responsive.spacing(10)),
-                    decoration: BoxDecoration(
-                      color: NeoMiraiColors.ash.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(Responsive.radius(8)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.notes_rounded, size: Responsive.iconSize(14), color: NeoMiraiColors.ash),
-                        SizedBox(width: Responsive.spacing(8)),
-                        Expanded(
-                          child: Text(
-                            item['keterangan'].toString(),
-                            style: TextStyle(fontSize: Responsive.fontSize(11), color: NeoMiraiColors.ink),
-                          ),
+                      // Waktu Masuk/Pulang
+                      if (mAbsen != null || pAbsen != null) ...[
+                        SizedBox(height: 4),
+                        Row(
+                          children: [
+                            if (mAbsen != null) ...[
+                              Icon(Icons.arrow_upward_rounded, size: 12, color: NeoMiraiColors.success),
+                              SizedBox(width: 2),
+                              Text(mAbsen.substring(0, 5), style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.success)),
+                            ],
+                            if (mAbsen != null && pAbsen != null) SizedBox(width: 12),
+                            if (pAbsen != null) ...[
+                              Icon(Icons.arrow_downward_rounded, size: 12, color: NeoMiraiColors.info),
+                              SizedBox(width: 2),
+                              Text(pAbsen.substring(0, 5), style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.info)),
+                            ],
+                          ],
                         ),
                       ],
-                    ),
+                      // Keterangan
+                      if (keterangan != null && keterangan.isNotEmpty && keterangan != status) ...[
+                        SizedBox(height: 4),
+                        Text(
+                          keterangan,
+                          style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.inkSoft),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
 
-                // Tombol Download
-                SizedBox(height: Responsive.spacing(14)),
+                // Download Button
+                SizedBox(width: Responsive.spacing(8)),
                 GestureDetector(
-                  onTap: _isDownloading ? null : () => _downloadSurat(item['id'].toString()),
+                  onTap: id != null ? () => _downloadSurat(id) : null,
                   child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: Responsive.spacing(12)),
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [NeoMiraiColors.gold, NeoMiraiColors.gold.withValues(alpha: 0.8)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(Responsive.radius(10)),
+                      boxShadow: [BoxShadow(color: NeoMiraiColors.gold.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2))],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (_isDownloading && _downloadingId == item['id'].toString())
-                          SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        else
-                          Icon(Icons.download_rounded, size: Responsive.iconSize(18), color: Colors.white),
-                        SizedBox(width: Responsive.spacing(8)),
-                        Text('Download Surat Keterangan', style: TextStyle(fontSize: Responsive.fontSize(12), fontWeight: FontWeight.w600, color: Colors.white)),
-                      ],
-                    ),
+                    child: Icon(Icons.download_rounded, size: Responsive.iconSize(18), color: Colors.white),
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
-    ).animate().fadeIn(delay: Duration(milliseconds: 100 * index), duration: 200.ms);
+    ).animate().fadeIn(delay: Duration(milliseconds: 50 * index), duration: 200.ms);
   }
 
   Widget _buildLoadingState() {
@@ -436,12 +443,12 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             child: CircularProgressIndicator(strokeWidth: 3, color: NeoMiraiColors.gold),
           ),
-          SizedBox(height: Responsive.spacing(16)),
-          Text('Memuat data...', style: TextStyle(fontSize: Responsive.fontSize(13), color: NeoMiraiColors.inkSoft)),
+          SizedBox(height: Responsive.spacing(12)),
+          Text('Memuat...', style: TextStyle(fontSize: Responsive.fontSize(12), color: NeoMiraiColors.inkSoft)),
         ],
       ),
     );
@@ -450,37 +457,37 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
   Widget _buildErrorState() {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(Responsive.cardPadding(32)),
+        padding: EdgeInsets.all(Responsive.cardPadding(24)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(Responsive.radius(20)),
+              padding: EdgeInsets.all(Responsive.radius(16)),
               decoration: BoxDecoration(
                 color: NeoMiraiColors.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.error_outline_rounded, size: Responsive.iconSize(48), color: NeoMiraiColors.error),
+              child: Icon(Icons.error_outline_rounded, size: Responsive.iconSize(40), color: NeoMiraiColors.error),
             ),
-            SizedBox(height: Responsive.spacing(20)),
-            Text('Gagal Memuat', style: TextStyle(fontSize: Responsive.fontSize(16), fontWeight: FontWeight.bold, color: NeoMiraiColors.ink)),
+            SizedBox(height: Responsive.spacing(16)),
+            Text('Gagal Memuat', style: TextStyle(fontSize: Responsive.fontSize(15), fontWeight: FontWeight.bold, color: NeoMiraiColors.ink)),
             SizedBox(height: Responsive.spacing(8)),
-            Text(_errorMessage ?? 'Terjadi kesalahan', textAlign: TextAlign.center, style: TextStyle(fontSize: Responsive.fontSize(12), color: NeoMiraiColors.inkSoft)),
-            SizedBox(height: Responsive.spacing(24)),
+            Text(_errorMessage ?? 'Terjadi kesalahan', textAlign: TextAlign.center, style: TextStyle(fontSize: Responsive.fontSize(11), color: NeoMiraiColors.inkSoft)),
+            SizedBox(height: Responsive.spacing(20)),
             GestureDetector(
               onTap: _loadHistory,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: Responsive.spacing(24), vertical: Responsive.spacing(12)),
+                padding: EdgeInsets.symmetric(horizontal: Responsive.spacing(20), vertical: Responsive.spacing(10)),
                 decoration: BoxDecoration(
                   color: NeoMiraiColors.gold,
-                  borderRadius: BorderRadius.circular(Responsive.radius(12)),
+                  borderRadius: BorderRadius.circular(Responsive.radius(10)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.refresh_rounded, size: Responsive.iconSize(18), color: Colors.white),
-                    SizedBox(width: Responsive.spacing(8)),
-                    Text('Coba Lagi', style: TextStyle(fontSize: Responsive.fontSize(13), fontWeight: FontWeight.w600, color: Colors.white)),
+                    Icon(Icons.refresh_rounded, size: Responsive.iconSize(16), color: Colors.white),
+                    SizedBox(width: Responsive.spacing(6)),
+                    Text('Coba Lagi', style: TextStyle(fontSize: Responsive.fontSize(12), fontWeight: FontWeight.w600, color: Colors.white)),
                   ],
                 ),
               ),
@@ -499,17 +506,17 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(Responsive.radius(24)),
+              padding: EdgeInsets.all(Responsive.radius(20)),
               decoration: BoxDecoration(
                 color: NeoMiraiColors.gold.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.inbox_rounded, size: Responsive.iconSize(56), color: NeoMiraiColors.gold),
+              child: Icon(Icons.inbox_rounded, size: Responsive.iconSize(48), color: NeoMiraiColors.gold),
             ),
-            SizedBox(height: Responsive.spacing(20)),
-            Text('Belum Ada Data', style: TextStyle(fontSize: Responsive.fontSize(16), fontWeight: FontWeight.bold, color: NeoMiraiColors.ink)),
-            SizedBox(height: Responsive.spacing(8)),
-            Text('Riwayat presensi error yang telah\ndiajukan akan muncul di sini', textAlign: TextAlign.center, style: TextStyle(fontSize: Responsive.fontSize(12), color: NeoMiraiColors.inkSoft, height: 1.5)),
+            SizedBox(height: Responsive.spacing(16)),
+            Text('Belum Ada Data', style: TextStyle(fontSize: Responsive.fontSize(15), fontWeight: FontWeight.bold, color: NeoMiraiColors.ink)),
+            SizedBox(height: Responsive.spacing(6)),
+            Text('Riwayat presensi error akan\nmuncul di sini', textAlign: TextAlign.center, style: TextStyle(fontSize: Responsive.fontSize(11), color: NeoMiraiColors.inkSoft, height: 1.4)),
           ],
         ),
       ),
