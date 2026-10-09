@@ -385,13 +385,13 @@ class _PresensiErrorHistoryPageState extends State<PresensiErrorHistoryPage> {
                             if (mAbsen != null) ...[
                               Icon(Icons.arrow_upward_rounded, size: 12, color: NeoMiraiColors.success),
                               SizedBox(width: 2),
-                              Text(mAbsen.substring(0, 5), style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.success)),
+                              Text('Masuk: ${mAbsen.substring(0, 5)}', style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.success)),
                             ],
                             if (mAbsen != null && pAbsen != null) SizedBox(width: 12),
                             if (pAbsen != null) ...[
                               Icon(Icons.arrow_downward_rounded, size: 12, color: NeoMiraiColors.info),
                               SizedBox(width: 2),
-                              Text(pAbsen.substring(0, 5), style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.info)),
+                              Text('Pulang: ${pAbsen.substring(0, 5)}', style: TextStyle(fontSize: Responsive.fontSize(10), color: NeoMiraiColors.info)),
                             ],
                           ],
                         ),
