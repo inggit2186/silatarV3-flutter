@@ -454,6 +454,11 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
                       Icon(Icons.calendar_today_rounded, size: Responsive.iconSize(16), color: Colors.purple),
                       SizedBox(width: Responsive.spacing(6)),
                       Text('Tanggal Lupa Presensi', style: TextStyle(fontSize: Responsive.fontSize(12), fontWeight: FontWeight.w600, color: Colors.purple)),
+                      SizedBox(height: Responsive.spacing(4)),
+                      Text(
+                        'Rentang: ${DateFormat('dd MMM yyyy', 'id_ID').format(DateTime.now().subtract(const Duration(days: 7)))} - Hari ini',
+                        style: TextStyle(fontSize: Responsive.fontSize(9), color: Colors.purple.withValues(alpha: 0.7)),
+                      ),
                     ],
                   ),
                   SizedBox(height: Responsive.spacing(10)),
@@ -731,13 +736,13 @@ class _PresensiErrorPageState extends State<PresensiErrorPage> {
 
   Future<void> _pickDate() async {
     final DateTime now = DateTime.now();
-    final yesterday = now.subtract(const Duration(days: 1));
+    final oneWeekAgo = now.subtract(const Duration(days: 7));
 
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _tanggalLupa ?? yesterday,
-      firstDate: yesterday,
-      lastDate: yesterday,
+      initialDate: _tanggalLupa ?? now,
+      firstDate: oneWeekAgo,
+      lastDate: now,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
