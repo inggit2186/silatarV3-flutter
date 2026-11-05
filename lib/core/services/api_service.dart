@@ -736,6 +736,143 @@ class ApiService {
     }
   }
 
+  /// Get daftar berita dengan paginasi (halaman list berita)
+  Future<ApiResponse<NewsPage>> getNewsList({
+    int page = 1,
+    int perPage = 200,
+    String? category,
+    String? query,
+  }) async {
+    try {
+      final params = <String, String>{
+        'page': '$page',
+        'per_page': '$perPage',
+        // Fallback untuk backend lama yang belum mendukung paginasi:
+        // parameter `limit` tetap dikirim agar seluruh berita terambil
+        // dalam satu request.
+        'limit': '$perPage',
+      };
+      if (category != null && category.isNotEmpty && category != 'all') {
+        params['category'] = category;
+      }
+      if (query != null && query.trim().isNotEmpty) {
+        params['q'] = query.trim();
+      }
+
+      final uri = Uri.parse('$_baseUrl/news').replace(queryParameters: params);
+
+      final response = await http
+          .get(uri, headers: {'Accept': 'application/json'})
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode != 200) {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil daftar berita',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final dynamic dataField = body['data'];
+      final List<Map<String, dynamic>> dataList = dataField is List
+          ? dataField.cast<Map<String, dynamic>>()
+          : <Map<String, dynamic>>[];
+
+      final dynamic metaField = body['meta'];
+      final hasMeta = metaField is Map;
+      final meta = hasMeta
+          ? Map<String, dynamic>.from(metaField)
+          : <String, dynamic>{};
+
+      // Backend lama tidak mengirim `meta`: anggap seluruh data sudah diterima.
+      final currentPage = (meta['current_page'] as num?)?.toInt() ?? page;
+      final lastPage = hasMeta
+          ? ((meta['last_page'] as num?)?.toInt() ?? page)
+          : currentPage;
+
+      return ApiResponse.success(
+        NewsPage(
+          items: dataList.map(NewsModel.fromJson).toList(),
+          currentPage: currentPage,
+          lastPage: lastPage < currentPage ? currentPage : lastPage,
+          perPage: (meta['per_page'] as num?)?.toInt() ?? perPage,
+          total: (meta['total'] as num?)?.toInt() ?? dataList.length,
+        ),
+      );
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get daftar kategori berita
+  Future<ApiResponse<List<NewsCategory>>> getNewsCategories() async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/news/categories'),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200 && body['data'] is List) {
+        final categories = (body['data'] as List)
+            .whereType<Map>()
+            .map((e) => NewsCategory.fromJson(Map<String, dynamic>.from(e)))
+            .where((c) => c.category.isNotEmpty)
+            .toList();
+        return ApiResponse.success(categories);
+      }
+
+      return ApiResponse.error(
+        body['message'] ?? 'Gagal mengambil kategori berita',
+        statusCode: response.statusCode,
+      );
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  /// Get single news detail (isi lengkap berita)
+  Future<ApiResponse<NewsModel>> getNewsDetail(String slug) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/news/$slug'),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final dynamic dataField = body['data'];
+        if (dataField is Map<String, dynamic>) {
+          return ApiResponse.success(NewsModel.fromJson(dataField));
+        }
+        return ApiResponse.error(
+          'Format response tidak valid',
+          statusCode: response.statusCode,
+        );
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil detail berita',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
   // ============ STATISTICS ============
 
   /// Get dashboard statistics

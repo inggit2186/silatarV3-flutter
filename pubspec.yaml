@@ -60,6 +60,12 @@ dependencies:
   # Crypto for MD5
   crypto: ^3.0.3
 
+  # Render isi berita (HTML dari editor Quill)
+  flutter_html: ^3.0.0
+  # html 0.15.7 menghapus fungsi internal `matches` yang masih dipakai
+  # flutter_html 3.0.0 sehingga gagal compile. Kunci ke 0.15.6.
+  html: 0.15.6
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

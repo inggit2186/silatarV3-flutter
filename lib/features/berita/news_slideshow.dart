@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/models/news_model.dart';
 import '../../../core/theme/neo_mirai_theme.dart';
 import '../../../core/utils/responsive.dart';
-import 'news_detail_sheet.dart';
+import 'news_detail_page.dart';
 
 /// Slideshow berita terbaru di dashboard
 class NewsSlideshow extends StatefulWidget {
@@ -138,7 +138,10 @@ class _NewsSlideshowState extends State<NewsSlideshow> {
     final bool isSmall = context.isSmallPhone;
 
     return GestureDetector(
-      onTap: () => showNewsDetailSheet(context, news),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => NewsDetailPage(news: news)),
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: NeoMiraiColors.rice,

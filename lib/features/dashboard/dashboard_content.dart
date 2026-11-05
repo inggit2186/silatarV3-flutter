@@ -7,10 +7,9 @@ import '../../core/utils/responsive.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/providers/kegiatan_provider.dart';
 import '../../core/services/api_service.dart';
-import '../../core/config/app_version.dart';
-import '../../core/services/patch_service.dart';
 import '../../core/models/news_model.dart';
 import '../berita/news_slideshow.dart';
+import '../berita/news_list_page.dart';
 import '../kegiatan/kegiatan_page.dart';
 import '../presensi/presensi_page.dart';
 import '../welcome/welcome_page.dart';
@@ -412,8 +411,8 @@ class _DashboardContentState extends State<DashboardContent> {
             SizedBox(width: Responsive.spacing(8)),
             Expanded(
               child: _buildActionCardSmall(
-                icon: Icons.info_rounded,
-                label: 'Info',
+                icon: Icons.newspaper_rounded,
+                label: 'Berita',
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -422,7 +421,10 @@ class _DashboardContentState extends State<DashboardContent> {
                     NeoMiraiColors.info.withValues(alpha: 0.85),
                   ],
                 ),
-                onTap: () => _showInfoDialog(context),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NewsListPage()),
+                ),
               ),
             ),
           ],
@@ -487,111 +489,6 @@ class _DashboardContentState extends State<DashboardContent> {
           ],
         ),
       ),
-    );
-  }
-
-  void _showInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Responsive.radius(20)),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.info_outline_rounded, color: NeoMiraiColors.gold),
-            SizedBox(width: Responsive.spacing(10)),
-            const Text('Informasi'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FutureBuilder<({String version, int versionCode})>(
-              future: PatchService.instance.getCurrentVersionInfo(),
-              builder: (context, snapshot) {
-                final versionText =
-                    snapshot.data?.version ?? AppVersion.version;
-                final buildNumber =
-                    snapshot.data?.versionCode ?? AppVersion.appVersionCode;
-                return _buildInfoItem(
-                  icon: Icons.apps_rounded,
-                  title: 'SILATAR V2',
-                  desc: 'Versi v$versionText (build $buildNumber)',
-                );
-              },
-            ),
-            SizedBox(height: Responsive.spacing(12)),
-            _buildInfoItem(
-              icon: Icons.business_rounded,
-              title: 'Kementerian Agama',
-              desc: 'Kabupaten Tanah Datar',
-            ),
-            SizedBox(height: Responsive.spacing(12)),
-            _buildInfoItem(
-              icon: Icons.help_outline_rounded,
-              title: 'Bantuan',
-              desc: 'Hubungi admin untuk bantuan',
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: NeoMiraiColors.gold,
-              foregroundColor: NeoMiraiColors.rice,
-            ),
-            child: const Text('Tutup'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoItem({
-    required IconData icon,
-    required String title,
-    required String desc,
-  }) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(Responsive.radius(8)),
-          decoration: BoxDecoration(
-            color: NeoMiraiColors.gold.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(Responsive.radius(10)),
-          ),
-          child: Icon(
-            icon,
-            size: Responsive.iconSize(20),
-            color: NeoMiraiColors.gold,
-          ),
-        ),
-        SizedBox(width: Responsive.spacing(12)),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: Responsive.fontSize(12),
-                ),
-              ),
-              Text(
-                desc,
-                style: TextStyle(
-                  fontSize: Responsive.fontSize(11),
-                  color: NeoMiraiColors.inkSoft,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 
