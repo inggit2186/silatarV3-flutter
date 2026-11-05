@@ -22,8 +22,9 @@ class KegiatanService {
         return ApiResponse.error('Token tidak valid');
       }
 
-      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatan}')
-          .replace(queryParameters: {'month': month});
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}${ApiConfig.kegiatan}',
+      ).replace(queryParameters: {'month': month});
 
       final response = await http.get(
         uri,
@@ -75,7 +76,9 @@ class KegiatanService {
         if (data['success'] == true) {
           return ApiResponse.success(data['data']);
         } else {
-          return ApiResponse.error(data['message'] ?? 'Gagal menyimpan kegiatan');
+          return ApiResponse.error(
+            data['message'] ?? 'Gagal menyimpan kegiatan',
+          );
         }
       } else {
         final data = json.decode(response.body);
@@ -165,8 +168,10 @@ class KegiatanService {
     }
   }
 
-  /// Update item kegiatan tertentu
+  /// Update item kegiatan tertentu.
+  /// Backend: PUT /laporan-kinerja/item (tanggal + id item di data_json).
   Future<ApiResponse<Map<String, dynamic>>> updateKegiatanItem({
+    required String tanggal,
     required int activityId,
     required KegiatanItem item,
   }) async {
@@ -176,10 +181,20 @@ class KegiatanService {
         return ApiResponse.error('Token tidak valid');
       }
 
+      final body = {
+        'tanggal': tanggal,
+        'id': activityId,
+        'k': item.kegiatan,
+        'v': item.volume,
+        's': item.satuan,
+        'jm': item.jamMulai,
+        'dm': item.durasiMenit,
+      };
+
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatan}/$activityId'),
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatanItem}'),
         headers: ApiConfig.authHeaders(token),
-        body: json.encode(item.toJson()),
+        body: json.encode(body),
       );
 
       if (response.statusCode == 200) {
@@ -201,8 +216,10 @@ class KegiatanService {
     }
   }
 
-  /// Hapus item kegiatan tertentu
+  /// Hapus item kegiatan tertentu.
+  /// Backend: DELETE /laporan-kinerja/item (tanggal + id item di data_json).
   Future<ApiResponse<void>> deleteKegiatanItem({
+    required String tanggal,
     required int activityId,
   }) async {
     try {
@@ -212,8 +229,9 @@ class KegiatanService {
       }
 
       final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatan}/$activityId'),
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatanItem}'),
         headers: ApiConfig.authHeaders(token),
+        body: json.encode({'tanggal': tanggal, 'id': activityId}),
       );
 
       if (response.statusCode == 200) {
@@ -245,8 +263,9 @@ class KegiatanService {
         return ApiResponse.error('Token tidak valid');
       }
 
-      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatanRekap}')
-          .replace(queryParameters: {'month': month});
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}${ApiConfig.kegiatanRekap}',
+      ).replace(queryParameters: {'month': month});
 
       final response = await http.get(
         uri,
@@ -282,8 +301,9 @@ class KegiatanService {
         return ApiResponse.error('Token tidak valid');
       }
 
-      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatan}/bulanan')
-          .replace(queryParameters: {'year': year});
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}${ApiConfig.kegiatan}/bulanan',
+      ).replace(queryParameters: {'year': year});
 
       final response = await http.get(
         uri,
@@ -328,8 +348,9 @@ class KegiatanService {
         params['signature_nip'] = signatureNip;
       }
 
-      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.kegiatan}/pdf')
-          .replace(queryParameters: params);
+      final uri = Uri.parse(
+        '${ApiConfig.baseUrl}${ApiConfig.kegiatan}/pdf',
+      ).replace(queryParameters: params);
 
       final response = await http.get(
         uri,
@@ -338,7 +359,8 @@ class KegiatanService {
 
       if (response.statusCode == 200) {
         // Check if response is PDF
-        if (response.headers['content-type']?.contains('application/pdf') == true) {
+        if (response.headers['content-type']?.contains('application/pdf') ==
+            true) {
           return ApiResponse.success(response.bodyBytes);
         } else {
           // Response is JSON (error)

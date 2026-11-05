@@ -27,6 +27,7 @@ class ApiConfig {
   static const String kegiatanHarian = '/laporan-kinerja/harian';
   static const String kegiatanRekap = '/laporan-kinerja/rekap';
   static const String kegiatanDay = '/laporan-kinerja/day';
+  static const String kegiatanItem = '/laporan-kinerja/item';
 
   // Headers
   static Map<String, String> get headers => {

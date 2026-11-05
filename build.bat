@@ -9,7 +9,7 @@ echo.
 set "NEW_VERSION=%~1"
 
 REM =============================================
-REM appVersionCode: Reset per version (e.g., 2.0.0 → 2.0.1 resets to 1)
+REM appVersionCode: Reset per version (e.g., 2.0.0 -> 2.0.1 resets to 1)
 REM buildNumber: ALWAYS INCREMENT (global counter for APK update detection)
 REM =============================================
 echo $n = '%NEW_VERSION%' > build.ps1

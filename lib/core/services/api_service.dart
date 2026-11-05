@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import '../models/user_model.dart';
 import '../models/layanan_model.dart';
+import '../models/news_model.dart';
 import '../models/presensi_model.dart';
 import '../models/janji_temu_model.dart';
 import 'storage_service.dart';
@@ -42,7 +43,11 @@ class ApiResponse<T> {
     );
   }
 
-  factory ApiResponse.error(String message, {int? statusCode, Map<String, dynamic>? errors}) {
+  factory ApiResponse.error(
+    String message, {
+    int? statusCode,
+    Map<String, dynamic>? errors,
+  }) {
     return ApiResponse(
       success: false,
       message: message,
@@ -52,7 +57,7 @@ class ApiResponse<T> {
   }
 }
 
-  /// API Service - Handles all HTTP requests to Laravel backend
+/// API Service - Handles all HTTP requests to Laravel backend
 class ApiService {
   static ApiService? _instance;
   static ApiService get instance {
@@ -132,20 +137,26 @@ class ApiService {
   /// Login with NIP/Email and password
   Future<ApiResponse<User>> login(String nipOrEmail, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/auth/login'),
-        headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'login': nipOrEmail, // bisa email atau NIP (nomor_induk)
-          'password': password,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/auth/login'),
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'login': nipOrEmail, // bisa email atau NIP (nomor_induk)
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Extract token and user data
-        final token = body['token'] ?? body['access_token'] ?? body['data']?['token'];
+        final token =
+            body['token'] ?? body['access_token'] ?? body['data']?['token'];
         if (token != null) {
           setToken(token.toString());
           // Save token to storage
@@ -163,7 +174,10 @@ class ApiService {
         }
 
         // Return basic user if no user data
-        return ApiResponse.error('Data user tidak ditemukan', statusCode: response.statusCode);
+        return ApiResponse.error(
+          'Data user tidak ditemukan',
+          statusCode: response.statusCode,
+        );
       } else if (response.statusCode == 422) {
         return ApiResponse.error(
           body['message'] ?? 'Validasi gagal',
@@ -193,10 +207,9 @@ class ApiService {
   /// Logout
   Future<ApiResponse<bool>> logout() async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/auth/logout'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(Uri.parse('$_baseUrl/auth/logout'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       // Clear local auth regardless of server response
       clearAuth();
@@ -224,21 +237,25 @@ class ApiService {
       // Load token from storage if not loaded
       await _loadTokenFromStorage();
 
-      final response = await http.get(
-        Uri.parse('$_baseUrl/auth/me'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/auth/me'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
       if (response.statusCode == 200) {
         // Response format: { data: { user: {...} } }
         final data = body['data'];
-        final userData = data is Map && data.containsKey('user') ? data['user'] : data;
+        final userData = data is Map && data.containsKey('user')
+            ? data['user']
+            : data;
         return ApiResponse.success(User.fromJson(userData));
       } else if (response.statusCode == 401) {
         clearAuth();
-        return ApiResponse.error('Sesi berakhir, silakan login ulang', statusCode: 401);
+        return ApiResponse.error(
+          'Sesi berakhir, silakan login ulang',
+          statusCode: 401,
+        );
       } else {
         return ApiResponse.error(
           body['message'] ?? 'Gagal mengambil data profil',
@@ -280,11 +297,13 @@ class ApiService {
       if (jenisKelamin != null) body['jenis_kelamin'] = jenisKelamin;
       if (bio != null) body['bio'] = bio;
 
-      final response = await http.put(
-        Uri.parse('$_baseUrl/user/profile'),
-        headers: _headers,
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/user/profile'),
+            headers: _headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final responseBody = _parseBody(response.body);
 
@@ -296,7 +315,10 @@ class ApiService {
         );
       } else if (response.statusCode == 401) {
         clearAuth();
-        return ApiResponse.error('Sesi berakhir, silakan login ulang', statusCode: 401);
+        return ApiResponse.error(
+          'Sesi berakhir, silakan login ulang',
+          statusCode: 401,
+        );
       } else if (response.statusCode == 422) {
         return ApiResponse.error(
           responseBody['message'] ?? 'Validasi gagal',
@@ -317,7 +339,9 @@ class ApiService {
   }
 
   /// Update profile photo
-  Future<ApiResponse<Map<String, dynamic>>> updateProfilePhoto(String filePath) async {
+  Future<ApiResponse<Map<String, dynamic>>> updateProfilePhoto(
+    String filePath,
+  ) async {
     try {
       await _loadTokenFromStorage();
 
@@ -329,9 +353,12 @@ class ApiService {
       request.headers.addAll(_headers);
       request.files.add(await http.MultipartFile.fromPath('foto', filePath));
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
-      final response = await http.Response.fromStream(streamedResponse)
-          .timeout(const Duration(seconds: 60));
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      ).timeout(const Duration(seconds: 60));
 
       final responseBody = _parseBody(response.body);
 
@@ -342,7 +369,10 @@ class ApiService {
         );
       } else if (response.statusCode == 401) {
         clearAuth();
-        return ApiResponse.error('Sesi berakhir, silakan login ulang', statusCode: 401);
+        return ApiResponse.error(
+          'Sesi berakhir, silakan login ulang',
+          statusCode: 401,
+        );
       } else {
         return ApiResponse.error(
           responseBody['message'] ?? 'Gagal mengupdate foto',
@@ -365,15 +395,17 @@ class ApiService {
     try {
       await _loadTokenFromStorage();
 
-      final response = await http.put(
-        Uri.parse('$_baseUrl/auth/change-password'),
-        headers: _headers,
-        body: jsonEncode({
-          'current_password': currentPassword,
-          'password': newPassword,
-          'password_confirmation': newPasswordConfirmation,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/auth/change-password'),
+            headers: _headers,
+            body: jsonEncode({
+              'current_password': currentPassword,
+              'password': newPassword,
+              'password_confirmation': newPasswordConfirmation,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final responseBody = _parseBody(response.body);
 
@@ -384,7 +416,10 @@ class ApiService {
         );
       } else if (response.statusCode == 401) {
         clearAuth();
-        return ApiResponse.error('Sesi berakhir, silakan login ulang', statusCode: 401);
+        return ApiResponse.error(
+          'Sesi berakhir, silakan login ulang',
+          statusCode: 401,
+        );
       } else if (response.statusCode == 422) {
         return ApiResponse.error(
           responseBody['message'] ?? 'Validasi gagal',
@@ -423,10 +458,12 @@ class ApiService {
       if (unitId != null) queryParams['unit_id'] = unitId.toString();
       if (isActive != null) queryParams['is_active'] = isActive ? '1' : '0';
 
-      final uri = Uri.parse('$_baseUrl/layanan')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/layanan',
+      ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _headers)
+      final response = await http
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
@@ -453,10 +490,9 @@ class ApiService {
   /// Get single service detail
   Future<ApiResponse<Layanan>> getLayananDetail(int id) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/layanan/$id'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/layanan/$id'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -479,10 +515,12 @@ class ApiService {
   /// Get requirements (syarat) for a service
   Future<ApiResponse<List<Syarat>>> getSyaratList(int layananId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/layanan/$layananId/syarat'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/layanan/$layananId/syarat'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -513,15 +551,15 @@ class ApiService {
     String? status,
   }) async {
     try {
-      final queryParams = <String, String>{
-        'page': page.toString(),
-      };
+      final queryParams = <String, String>{'page': page.toString()};
       if (status != null && status.isNotEmpty) queryParams['status'] = status;
 
-      final uri = Uri.parse('$_baseUrl/pengajuan')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/pengajuan',
+      ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _headers)
+      final response = await http
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
@@ -572,9 +610,12 @@ class ApiService {
         }
       }
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
-      final response = await http.Response.fromStream(streamedResponse)
-          .timeout(const Duration(seconds: 60));
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+      final response = await http.Response.fromStream(
+        streamedResponse,
+      ).timeout(const Duration(seconds: 60));
 
       final body = _parseBody(response.body);
 
@@ -607,10 +648,9 @@ class ApiService {
   /// Get submission detail
   Future<ApiResponse<Map<String, dynamic>>> getPengajuanDetail(int id) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/pengajuan/$id'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/pengajuan/$id'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -632,18 +672,60 @@ class ApiService {
   /// Cancel submission
   Future<ApiResponse<bool>> cancelPengajuan(int id) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/pengajuan/$id/cancel'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(Uri.parse('$_baseUrl/pengajuan/$id/cancel'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
       if (response.statusCode == 200) {
-        return ApiResponse.success(true, message: body['message'] ?? 'Pengajuan berhasil dibatalkan');
+        return ApiResponse.success(
+          true,
+          message: body['message'] ?? 'Pengajuan berhasil dibatalkan',
+        );
       } else {
         return ApiResponse.error(
           body['message'] ?? 'Gagal membatalkan pengajuan',
+          statusCode: response.statusCode,
+        );
+      }
+    } on SocketException {
+      return ApiResponse.error('Tidak ada koneksi internet');
+    } catch (e) {
+      return ApiResponse.error('Terjadi kesalahan: $e');
+    }
+  }
+
+  // ============ BERITA / NEWS ============
+
+  /// Get latest published news (untuk slideshow dashboard)
+  Future<ApiResponse<List<NewsModel>>> getLatestNews({int limit = 5}) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/news?limit=$limit'),
+            headers: {'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 30));
+
+      final body = _parseBody(response.body);
+
+      if (response.statusCode == 200) {
+        final dynamic dataField = body['data'];
+        List<Map<String, dynamic>> dataList = [];
+
+        if (dataField is List) {
+          dataList = dataField.cast<Map<String, dynamic>>();
+        } else if (dataField is Map<String, dynamic> &&
+            dataField['data'] is List) {
+          dataList = (dataField['data'] as List).cast<Map<String, dynamic>>();
+        }
+
+        final news = dataList.map(NewsModel.fromJson).toList();
+        return ApiResponse.success(news);
+      } else {
+        return ApiResponse.error(
+          body['message'] ?? 'Gagal mengambil berita',
           statusCode: response.statusCode,
         );
       }
@@ -659,10 +741,9 @@ class ApiService {
   /// Get dashboard statistics
   Future<ApiResponse<Map<String, dynamic>>> getDashboardStats() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/dashboard/stats'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/dashboard/stats'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -692,17 +773,19 @@ class ApiService {
     String? keterangan,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/presensi'),
-        headers: _headers,
-        body: jsonEncode({
-          'jenis': jenis,
-          'latitude': latitude,
-          'longitude': longitude,
-          'jarak_meter': jarakMeter,
-          'keterangan': keterangan,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/presensi'),
+            headers: _headers,
+            body: jsonEncode({
+              'jenis': jenis,
+              'latitude': latitude,
+              'longitude': longitude,
+              'jarak_meter': jarakMeter,
+              'keterangan': keterangan,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -747,10 +830,9 @@ class ApiService {
   /// Ambil presensi hari ini
   Future<ApiResponse<PresensiHariIni>> getPresensiHariIni() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/presensi/today'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/presensi/today'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -771,16 +853,21 @@ class ApiService {
   }
 
   /// Ambil riwayat presensi
-  Future<ApiResponse<PresensiHistory>> getPresensiHistory({int? bulan, int? tahun}) async {
+  Future<ApiResponse<PresensiHistory>> getPresensiHistory({
+    int? bulan,
+    int? tahun,
+  }) async {
     try {
       final queryParams = <String, String>{};
       if (bulan != null) queryParams['bulan'] = bulan.toString();
       if (tahun != null) queryParams['tahun'] = tahun.toString();
 
-      final uri = Uri.parse('$_baseUrl/presensi/history')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/presensi/history',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
-      final response = await http.get(uri, headers: _headers)
+      final response = await http
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
@@ -813,18 +900,20 @@ class ApiService {
     required String keterangan,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/janji-temu'),
-        headers: _headers,
-        body: jsonEncode({
-          'dept_id': deptId,
-          'nip_tujuan': nipTujuan,
-          'tipe': tipe,
-          'tanggal': tanggal,
-          'jam': jam,
-          'keterangan': keterangan,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/janji-temu'),
+            headers: _headers,
+            body: jsonEncode({
+              'dept_id': deptId,
+              'nip_tujuan': nipTujuan,
+              'tipe': tipe,
+              'tanggal': tanggal,
+              'jam': jam,
+              'keterangan': keterangan,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -860,10 +949,12 @@ class ApiService {
       };
       if (status != null) queryParams['status'] = status;
 
-      final uri = Uri.parse('$_baseUrl/janji-temu/my-appointments')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/janji-temu/my-appointments',
+      ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _headers)
+      final response = await http
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
@@ -877,7 +968,9 @@ class ApiService {
         // }
 
         final List<dynamic> dataList = body['data'] ?? [];
-        final Map<String, dynamic> meta = body['meta'] is Map ? body['meta'] : {};
+        final Map<String, dynamic> meta = body['meta'] is Map
+            ? body['meta']
+            : {};
 
         // Convert each item to JanjiTemu model with type safety
         final List<JanjiTemu> appointments = [];
@@ -901,13 +994,15 @@ class ApiService {
           return defaultValue;
         }
 
-        return ApiResponse.success(JanjiTemuHistory(
-          data: appointments,
-          currentPage: parseIntValue(meta['current_page'], 1),
-          lastPage: parseIntValue(meta['last_page'], 1),
-          perPage: parseIntValue(meta['per_page'], 10),
-          total: parseIntValue(meta['total'], 0),
-        ));
+        return ApiResponse.success(
+          JanjiTemuHistory(
+            data: appointments,
+            currentPage: parseIntValue(meta['current_page'], 1),
+            lastPage: parseIntValue(meta['last_page'], 1),
+            perPage: parseIntValue(meta['per_page'], 10),
+            total: parseIntValue(meta['total'], 0),
+          ),
+        );
       } else {
         return ApiResponse.error(
           body['message'] ?? 'Gagal mengambil riwayat janji temu',
@@ -924,10 +1019,9 @@ class ApiService {
   /// Get janji temu detail
   Future<ApiResponse<JanjiTemu>> getJanjiTemuDetail(int id) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/janji-temu/$id'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/janji-temu/$id'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -955,15 +1049,18 @@ class ApiService {
   }
 
   /// Cancel janji temu
-  Future<ApiResponse<Map<String, dynamic>>> cancelJanjiTemu(int id, {String? alasan}) async {
+  Future<ApiResponse<Map<String, dynamic>>> cancelJanjiTemu(
+    int id, {
+    String? alasan,
+  }) async {
     try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/janji-temu/$id/cancel'),
-        headers: _headers,
-        body: jsonEncode({
-          'alasan': alasan ?? 'Dibatalkan oleh pengguna',
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/janji-temu/$id/cancel'),
+            headers: _headers,
+            body: jsonEncode({'alasan': alasan ?? 'Dibatalkan oleh pengguna'}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -988,16 +1085,17 @@ class ApiService {
   /// Get departments list
   Future<ApiResponse<List<JanjiTemuDepartment>>> getDepartments() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/janji-temu/departments'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/janji-temu/departments'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = body['data'] ?? [];
-        final departments = data.map((d) => JanjiTemuDepartment.fromJson(d)).toList();
+        final departments = data
+            .map((d) => JanjiTemuDepartment.fromJson(d))
+            .toList();
         return ApiResponse.success(departments);
       } else {
         return ApiResponse.error(
@@ -1013,12 +1111,16 @@ class ApiService {
   }
 
   /// Get employees in department
-  Future<ApiResponse<Map<String, dynamic>>> getDepartmentEmployees(int deptId) async {
+  Future<ApiResponse<Map<String, dynamic>>> getDepartmentEmployees(
+    int deptId,
+  ) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/janji-temu/departments/$deptId/employees'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(
+            Uri.parse('$_baseUrl/janji-temu/departments/$deptId/employees'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1052,17 +1154,21 @@ class ApiService {
       };
       if (status != null) queryParams['status'] = status;
 
-      final uri = Uri.parse('$_baseUrl/admin/janji-temu')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/admin/janji-temu',
+      ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _headers)
+      final response = await http
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
       if (response.statusCode == 200) {
         final List<dynamic> dataList = body['data'] ?? [];
-        final Map<String, dynamic> meta = body['meta'] is Map ? body['meta'] : {};
+        final Map<String, dynamic> meta = body['meta'] is Map
+            ? body['meta']
+            : {};
 
         final List<JanjiTemu> appointments = [];
         for (var item in dataList) {
@@ -1083,13 +1189,15 @@ class ApiService {
           return defaultValue;
         }
 
-        return ApiResponse.success(JanjiTemuHistory(
-          data: appointments,
-          currentPage: parseIntValue(meta['current_page'], 1),
-          lastPage: parseIntValue(meta['last_page'], 1),
-          perPage: parseIntValue(meta['per_page'], 10),
-          total: parseIntValue(meta['total'], 0),
-        ));
+        return ApiResponse.success(
+          JanjiTemuHistory(
+            data: appointments,
+            currentPage: parseIntValue(meta['current_page'], 1),
+            lastPage: parseIntValue(meta['last_page'], 1),
+            perPage: parseIntValue(meta['per_page'], 10),
+            total: parseIntValue(meta['total'], 0),
+          ),
+        );
       } else {
         return ApiResponse.error(
           body['message'] ?? 'Gagal mengambil data janji temu',
@@ -1104,15 +1212,18 @@ class ApiService {
   }
 
   /// Approve janji temu
-  Future<ApiResponse<Map<String, dynamic>>> approveJanjiTemu(int id, {String? komen}) async {
+  Future<ApiResponse<Map<String, dynamic>>> approveJanjiTemu(
+    int id, {
+    String? komen,
+  }) async {
     try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/admin/janji-temu/$id/approve'),
-        headers: _headers,
-        body: jsonEncode({
-          'komen': komen ?? 'Disetujui oleh petugas',
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/admin/janji-temu/$id/approve'),
+            headers: _headers,
+            body: jsonEncode({'komen': komen ?? 'Disetujui oleh petugas'}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1135,15 +1246,18 @@ class ApiService {
   }
 
   /// Reject janji temu
-  Future<ApiResponse<Map<String, dynamic>>> rejectJanjiTemu(int id, {required String komen}) async {
+  Future<ApiResponse<Map<String, dynamic>>> rejectJanjiTemu(
+    int id, {
+    required String komen,
+  }) async {
     try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/admin/janji-temu/$id/reject'),
-        headers: _headers,
-        body: jsonEncode({
-          'komen': komen,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/admin/janji-temu/$id/reject'),
+            headers: _headers,
+            body: jsonEncode({'komen': komen}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1170,10 +1284,9 @@ class ApiService {
   /// Submit SIMPEG password reset request
   Future<ApiResponse<Map<String, dynamic>>> submitSimpegResetPassword() async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/simpeg/reset-password'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(Uri.parse('$_baseUrl/simpeg/reset-password'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1198,10 +1311,9 @@ class ApiService {
   /// Get user's SIMPEG requests
   Future<ApiResponse<List<Map<String, dynamic>>>> getSimpegRequests() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/simpeg/my-requests'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/simpeg/my-requests'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1236,10 +1348,12 @@ class ApiService {
       };
       if (status != null) queryParams['status'] = status;
 
-      final uri = Uri.parse('$_baseUrl/admin/simpeg')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/admin/simpeg',
+      ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _headers)
+      final response = await http
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
@@ -1272,19 +1386,19 @@ class ApiService {
   }
 
   /// Verify SIMPEG request
-  Future<ApiResponse<Map<String, dynamic>>> verifySimpegRequest(int id, {
+  Future<ApiResponse<Map<String, dynamic>>> verifySimpegRequest(
+    int id, {
     required String status,
     required String keterangan,
   }) async {
     try {
-      final response = await http.put(
-        Uri.parse('$_baseUrl/admin/simpeg/$id/verify'),
-        headers: _headers,
-        body: jsonEncode({
-          'status': status,
-          'keterangan': keterangan,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .put(
+            Uri.parse('$_baseUrl/admin/simpeg/$id/verify'),
+            headers: _headers,
+            body: jsonEncode({'status': status, 'keterangan': keterangan}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1311,10 +1425,9 @@ class ApiService {
   /// Get list of acara/events
   Future<ApiResponse<List<Map<String, dynamic>>>> getAcaraList() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/acara'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/acara'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1347,10 +1460,9 @@ class ApiService {
   /// Get single acara/event detail
   Future<ApiResponse<Map<String, dynamic>>> getAcaraDetail(int id) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/acara/$id'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/acara/$id'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1378,7 +1490,8 @@ class ApiService {
   }
 
   /// Submit attendance (Hadir)
-  Future<ApiResponse<Map<String, dynamic>>> submitHadir(int acaraId, {
+  Future<ApiResponse<Map<String, dynamic>>> submitHadir(
+    int acaraId, {
     required double latitude,
     required double longitude,
     double? distance,
@@ -1386,17 +1499,19 @@ class ApiService {
     String? foto,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/acara/$acaraId/hadir'),
-        headers: _headers,
-        body: jsonEncode({
-          'latitude': latitude,
-          'longitude': longitude,
-          'distance': distance,
-          'location': location,
-          'foto': foto,
-        }),
-      ).timeout(const Duration(seconds: 60));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/acara/$acaraId/hadir'),
+            headers: _headers,
+            body: jsonEncode({
+              'latitude': latitude,
+              'longitude': longitude,
+              'distance': distance,
+              'location': location,
+              'foto': foto,
+            }),
+          )
+          .timeout(const Duration(seconds: 60));
 
       final body = _parseBody(response.body);
 
@@ -1419,17 +1534,18 @@ class ApiService {
   }
 
   /// Submit not attendance (Tidak Hadir)
-  Future<ApiResponse<Map<String, dynamic>>> submitTidakHadir(int acaraId, {
+  Future<ApiResponse<Map<String, dynamic>>> submitTidakHadir(
+    int acaraId, {
     required String keterangan,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/acara/$acaraId/tidak-hadir'),
-        headers: _headers,
-        body: jsonEncode({
-          'keterangan': keterangan,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/acara/$acaraId/tidak-hadir'),
+            headers: _headers,
+            body: jsonEncode({'keterangan': keterangan}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1456,10 +1572,9 @@ class ApiService {
   /// Get presensi error status today
   Future<ApiResponse<Map<String, dynamic>>> getPresensiErrorToday() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/presensi-error/today'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(Uri.parse('$_baseUrl/presensi-error/today'), headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);
 
@@ -1481,7 +1596,8 @@ class ApiService {
   /// Submit presensi error (Sistem Error / Tugas Luar / Lupa Presensi)
   Future<ApiResponse<Map<String, dynamic>>> submitPresensiError({
     required String jenis, // 'masuk' atau 'pulang'
-    required String alasan, // 'SISTEM_ERROR', 'TUGAS_LUAR', 'LUPA_PRESNSI_PUSAKA'
+    required String
+    alasan, // 'SISTEM_ERROR', 'TUGAS_LUAR', 'LUPA_PRESNSI_PUSAKA'
     String? keteranganTugasLuar,
     String? tanggalLupa,
     double? latitude,
@@ -1500,7 +1616,8 @@ class ApiService {
         'foto': foto,
       };
 
-      if (keteranganTugasLuar != null) body['keterangan_tugas_luar'] = keteranganTugasLuar;
+      if (keteranganTugasLuar != null)
+        body['keterangan_tugas_luar'] = keteranganTugasLuar;
       if (tanggalLupa != null) body['tanggal_lupa'] = tanggalLupa;
       if (latitude != null) body['latitude'] = latitude;
       if (longitude != null) body['longitude'] = longitude;
@@ -1510,11 +1627,13 @@ class ApiService {
       if (supervisorNip != null) body['supervisor_nip'] = supervisorNip;
       if (unitKerjaManual != null) body['unit_kerja_manual'] = unitKerjaManual;
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl/presensi-error'),
-        headers: _headers,
-        body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 60));
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/presensi-error'),
+            headers: _headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 60));
 
       final responseBody = _parseBody(response.body);
 
@@ -1538,16 +1657,21 @@ class ApiService {
   }
 
   /// Get presensi error history
-  Future<ApiResponse<Map<String, dynamic>>> getPresensiErrorHistory({int? bulan, int? tahun}) async {
+  Future<ApiResponse<Map<String, dynamic>>> getPresensiErrorHistory({
+    int? bulan,
+    int? tahun,
+  }) async {
     try {
       final queryParams = <String, String>{};
       if (bulan != null) queryParams['bulan'] = bulan.toString();
       if (tahun != null) queryParams['tahun'] = tahun.toString();
 
-      final uri = Uri.parse('$_baseUrl/presensi-error/history')
-          .replace(queryParameters: queryParams.isEmpty ? null : queryParams);
+      final uri = Uri.parse(
+        '$_baseUrl/presensi-error/history',
+      ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
 
-      final response = await http.get(uri, headers: _headers)
+      final response = await http
+          .get(uri, headers: _headers)
           .timeout(const Duration(seconds: 30));
 
       final body = _parseBody(response.body);

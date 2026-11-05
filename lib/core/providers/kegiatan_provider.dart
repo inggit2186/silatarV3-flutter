@@ -36,8 +36,8 @@ class KegiatanProvider extends ChangeNotifier {
             .map((group) => KegiatanHarian.fromJson(group))
             .toList();
 
-        // Sort by date
-        _dailyGroups.sort((a, b) => a.date.compareTo(b.date));
+        // Sort by date - DESCENDING (newest first)
+        _dailyGroups.sort((a, b) => b.date.compareTo(a.date));
 
         // Calculate rekap from daily groups
         _rekap = _calculateRekap();
@@ -178,16 +178,19 @@ class KegiatanProvider extends ChangeNotifier {
   KegiatanRekap _calculateRekap() {
     int totalEntries = 0;
     int totalVolume = 0;
+    int totalDurasi = 0;
 
     for (final group in _dailyGroups) {
       totalEntries += group.items.length;
       totalVolume += group.items.fold(0, (sum, item) => sum + item.volume);
+      totalDurasi += group.totalDurasiMenit;
     }
 
     return KegiatanRekap(
       totalEntries: totalEntries,
       totalDays: _dailyGroups.length,
       totalVolume: totalVolume,
+      totalDurasiMenit: totalDurasi,
     );
   }
 

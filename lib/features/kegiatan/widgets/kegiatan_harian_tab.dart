@@ -36,9 +36,7 @@ class _KegiatanHarianTabState extends State<KegiatanHarianTab> {
         ),
 
         // List Kegiatan
-        Expanded(
-          child: _buildKegiatanList(),
-        ),
+        Expanded(child: _buildKegiatanList()),
       ],
     );
   }
@@ -75,6 +73,14 @@ class _KegiatanHarianTabState extends State<KegiatanHarianTab> {
                 Icons.inventory_rounded,
                 const Color(0xFF1565C0),
               ),
+              if (rekap.totalDurasiMenit > 0)
+                _buildStatCard(
+                  rekap.totalDurasiLabel ?? '${rekap.totalDurasiMenit}m',
+                  'Durasi',
+                  Icons.timelapse_rounded,
+                  const Color(0xFF6A1B9A),
+                  compactValue: true,
+                ),
             ],
           ),
         );
@@ -82,9 +88,16 @@ class _KegiatanHarianTabState extends State<KegiatanHarianTab> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String value,
+    String label,
+    IconData icon,
+    Color color, {
+    bool compactValue = false,
+  }) {
     return Expanded(
       child: Container(
+        margin: EdgeInsets.symmetric(horizontal: Responsive.spacing(2)),
         padding: EdgeInsets.symmetric(
           horizontal: Responsive.spacing(8),
           vertical: Responsive.spacing(10),
@@ -98,12 +111,16 @@ class _KegiatanHarianTabState extends State<KegiatanHarianTab> {
           children: [
             Icon(icon, color: color, size: Responsive.iconSize(18)),
             SizedBox(height: Responsive.spacing(4)),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: Responsive.fontSize(16),
-                fontWeight: FontWeight.bold,
-                color: color,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(compactValue ? 12 : 16),
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ),
             Text(
@@ -155,9 +172,7 @@ class _KegiatanHarianTabState extends State<KegiatanHarianTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: const Color(0xFFEF6C00),
-          ),
+          CircularProgressIndicator(color: const Color(0xFFEF6C00)),
           SizedBox(height: Responsive.spacing(16)),
           Text(
             'Memuat kegiatan...',
@@ -277,9 +292,7 @@ class _KegiatanHarianTabState extends State<KegiatanHarianTab> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Hapus Kegiatan'),
-        content: Text(
-          'Hapus semua kegiatan pada tanggal ${harian.label}?',
-        ),
+        content: Text('Hapus semua kegiatan pada tanggal ${harian.label}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),

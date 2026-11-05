@@ -14,7 +14,7 @@ class AppVersion {
   /// Build number (GLOBAL counter, never resets)
   /// Used for APK update detection - increment every build
   /// Backend checks: build_number > user's build_number
-  static const int buildNumber = 3;
+  static const int buildNumber = 2;
 
   /// Full version string: major.version.patchCount
   /// Example: "2.0.0" (no patch), "2.0.0.1" (1 patch), "2.0.1.0" (new APK)
@@ -23,6 +23,41 @@ class AppVersion {
     return '$version.0';
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

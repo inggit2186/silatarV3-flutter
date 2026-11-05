@@ -93,59 +93,181 @@ class KegiatanHarianItem extends StatelessWidget {
               ),
             ),
           ),
+          if (harian.totalDurasiLabel != null) ...[
+            SizedBox(width: Responsive.spacing(4)),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: Responsive.spacing(6),
+                vertical: Responsive.spacing(2),
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6A1B9A).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(Responsive.radius(6)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.timelapse_rounded,
+                    size: Responsive.iconSize(10),
+                    color: const Color(0xFF6A1B9A),
+                  ),
+                  SizedBox(width: Responsive.spacing(2)),
+                  Text(
+                    harian.totalDurasiLabel!,
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(10),
+                      color: const Color(0xFF6A1B9A),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildActivityList() {
+    // Bila minimal satu kegiatan punya jam mulai, kegiatan tanpa waktu
+    // ditandai "Tidak tercatat" (mencerminkan perilaku PDF di web).
+    final adaWaktu = harian.items.any((item) => item.waktuLabel != null);
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: Responsive.spacing(12),
         vertical: Responsive.spacing(8),
       ),
       child: Column(
-        children: harian.items.map((item) => _buildActivityItem(item)).toList(),
+        children: harian.items
+            .map((item) => _buildActivityItem(item, tandaiTanpaWaktu: adaWaktu))
+            .toList(),
       ),
     );
   }
 
-  Widget _buildActivityItem(KegiatanItem item) {
+  Widget _buildActivityItem(
+    KegiatanItem item, {
+    bool tandaiTanpaWaktu = false,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: Responsive.spacing(4)),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.check_circle_rounded,
-            color: const Color(0xFF2E7D32),
-            size: Responsive.iconSize(16),
-          ),
-          SizedBox(width: Responsive.spacing(8)),
-          Expanded(
-            child: Text(
-              item.kegiatan,
-              style: TextStyle(
-                fontSize: Responsive.fontSize(12),
-                color: Colors.black87,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.check_circle_rounded,
+                color: const Color(0xFF2E7D32),
+                size: Responsive.iconSize(16),
               ),
+              SizedBox(width: Responsive.spacing(8)),
+              Expanded(
+                child: Text(
+                  item.kegiatan,
+                  style: TextStyle(
+                    fontSize: Responsive.fontSize(12),
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+              SizedBox(width: Responsive.spacing(8)),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Responsive.spacing(6),
+                  vertical: Responsive.spacing(2),
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(Responsive.radius(4)),
+                ),
+                child: Text(
+                  '${item.volume} ${item.satuan}',
+                  style: TextStyle(
+                    fontSize: Responsive.fontSize(10),
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (item.waktuLabel != null)
+            Padding(
+              padding: EdgeInsets.only(
+                left: Responsive.spacing(8) + Responsive.iconSize(16),
+                top: Responsive.spacing(4),
+              ),
+              child: _buildWaktuBadge(item.waktuLabel!),
+            )
+          else if (tandaiTanpaWaktu)
+            Padding(
+              padding: EdgeInsets.only(
+                left: Responsive.spacing(8) + Responsive.iconSize(16),
+                top: Responsive.spacing(4),
+              ),
+              child: _buildTanpaWaktuLabel(item),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTanpaWaktuLabel(KegiatanItem item) {
+    final durasi = KegiatanItem.formatDurasi(item.durasiMenit);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Tidak tercatat',
+          style: TextStyle(
+            fontSize: Responsive.fontSize(10),
+            fontStyle: FontStyle.italic,
+            color: Colors.grey[500],
+          ),
+        ),
+        if (durasi != null) ...[
+          SizedBox(width: Responsive.spacing(4)),
+          Text(
+            '($durasi)',
+            style: TextStyle(
+              fontSize: Responsive.fontSize(10),
+              color: Colors.grey[500],
             ),
           ),
-          SizedBox(width: Responsive.spacing(8)),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.spacing(6),
-              vertical: Responsive.spacing(2),
-            ),
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(Responsive.radius(4)),
-            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildWaktuBadge(String label) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.spacing(6),
+        vertical: Responsive.spacing(2),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF6C00).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(Responsive.radius(4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.schedule_rounded,
+            size: Responsive.iconSize(11),
+            color: const Color(0xFFEF6C00),
+          ),
+          SizedBox(width: Responsive.spacing(4)),
+          Flexible(
             child: Text(
-              '${item.volume} ${item.satuan}',
+              label,
               style: TextStyle(
                 fontSize: Responsive.fontSize(10),
-                color: Colors.grey[600],
+                color: const Color(0xFFEF6C00),
               ),
             ),
           ),
@@ -162,9 +284,7 @@ class KegiatanHarianItem extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(
-            color: Colors.grey.withValues(alpha: 0.2),
-          ),
+          top: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
         ),
       ),
       child: Row(
@@ -202,10 +322,7 @@ class KegiatanHarianItem extends StatelessWidget {
       icon: Icon(icon, size: Responsive.iconSize(14), color: color),
       label: Text(
         label,
-        style: TextStyle(
-          fontSize: Responsive.fontSize(10),
-          color: color,
-        ),
+        style: TextStyle(fontSize: Responsive.fontSize(10), color: color),
       ),
       style: TextButton.styleFrom(
         padding: EdgeInsets.symmetric(

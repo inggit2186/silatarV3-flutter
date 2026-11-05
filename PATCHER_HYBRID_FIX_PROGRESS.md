@@ -74,6 +74,9 @@ Reads `appVersionCode` from app_version.dart automatically, asks for patch numbe
 - [x] Fix update dialog - only show update version, not current version
 - [x] Fix APK download URL - backend was returning local path instead of download endpoint
 - [x] Fix build.bat - appVersionCode was being reset when version changed!
+- [x] **FIX CRITICAL BUG**: SharedPreferences di-reset saat APK upgrade - menggunakan disk metadata sebagai backup
+- [x] **PROACTIVE FIX**: Clear flutter_patcher SEBELUM APK install (di dialog update)
+- [x] **SHAREDPREFERENCES MIGRATION FIX**: Track app version di SharedPreferences untuk deteksi migration
 - [ ] Test flow: install APK → patch → APK upgrade → verify version is correct
 
 ### In Progress
@@ -206,6 +209,88 @@ build.bat 2.0.1      ← appVersionCode reset ke 1, buildNumber increment
 | `buildNumber` | Selalu increment | Global total builds counter |
 
 ## Changelog
+
+### 2026-09-30 (SharedPreferences Migration Fix)
+- **PROBLEM**: Saat APK di-update, Android memigrasikan SharedPreferences dari APK lama
+  - SharedPreferences lama (dengan data versi 2.0.0) di-restore ke APK baru (2.0.1)
+  - Versi app tetap 2.0.0 meskipun APK sudah 2.0.1
+  - Clear Data di Settings diperlukan untuk fix
+
+- **SOLUSI**: Track app version di SharedPreferences untuk deteksi migration
+
+**Key changes:**
+1. Added `_keyStoredAppVersion` constant - simpan versi app saat data disimpan
+2. Updated `checkAndApplyPatch()` - save current version ke SharedPreferences
+3. Updated `_checkApkUpgrade()` - cek apakah stored version != current version
+4. Updated `prepareForApkUpdate()` - hapus juga `_keyStoredAppVersion`
+5. Updated `_performCleanup()` - hapus juga `_keyStoredAppVersion`
+6. Updated `rollback()` - hapus juga `_keyStoredAppVersion`
+
+**Flow baru:**
+```
+1. Apply patch → save version "2.0.0" ke SharedPreferences
+2. User klik "Install Update" → prepareForApkUpdate() → hapus SharedPreferences
+3. APK 2.0.1 di-install → Android memigrasikan SharedPreferences (kosong)
+4. App dibuka:
+   - storedAppVersion = null (SharedPreferences kosong)
+   - disk metadata = null (sudah dihapus)
+   - Current version = 2.0.1
+   - → Fresh install state → versi "2.0.1.0" ✓
+```
+
+### 2026-09-30 (PROACTIVE FIX - Clear Patches Before APK Install)
+- **PROBLEM**: Patch detection at startup had edge cases where SharedPreferences/disk metadata could be inconsistent
+- **SOLUSI**: Proaktif clear flutter_patcher SEBELUM APK install dimulai
+  - User klik "Install Update" → patch_service.prepareForApkUpdate() dipanggil duluan
+  - Clear flutter_patcher directory + SharedPreferences
+  - Baru kemudian buka Android installer
+  - Ini lebih reliable karena kita kontrol KAPAN clear terjadi
+
+**Key changes:**
+1. Added `prepareForApkUpdate()` method to PatchService (public method)
+2. Updated `_installApk()` in UpdateDialog to call `PatchService.instance.prepareForApkUpdate()` before opening installer
+
+**Flow baru:**
+```
+User klik "Install Update"
+  → PatchService.prepareForApkUpdate() [clear all patch data]
+  → ApkUpdateService.installApk() [buka Android installer]
+  → User install APK di sistem Android
+  → User buka app lagi [fresh start tanpa patch]
+```
+
+### 2026-09-30 (CRITICAL BUG FIX - SharedPreferences Reset on APK Upgrade)
+- **PROBLEM**: SharedPreferences di-reset/hilang saat APK di-upgrade (meskipun pakai `adb install -r`)
+  - Setelah apply patch, SharedPreferences menyimpan buildNumber=1, patchCount=1
+  - Setelah APK upgrade ke buildNumber=2, semua nilai SharedPreferences menjadi null!
+- **ROOT CAUSE**: SharedPreferences tidak persist saat APK upgrade dalam beberapa kondisi Android
+- **SOLUSI**: Simpan metadata patch di flutter_patcher directory (yang PERSIST saat APK upgrade)
+
+**Key changes:**
+1. Added `_metaFileName = 'patch_metadata.json'` constant
+2. Added `_getPatchDirectory()` - get flutter_patcher directory path
+3. Added `_getMetaFile()` - get metadata file path
+4. Added `_readMetadataFromDisk()` - read metadata dari disk (flutter_patcher directory)
+5. Added `_writeMetadataToDisk()` - write metadata ke flutter_patcher directory
+6. Added `_clearMetadataFromDisk()` - delete metadata file dari disk
+7. Updated `_checkApkUpgrade()`:
+   - Primary check gunakan disk metadata (yang persist)
+   - Fallback ke SharedPreferences
+   - Check jika buildNumber atau version berubah
+8. Updated `_performCleanup()` - juga clear metadata dari disk
+9. Updated `checkAndApplyPatch()` - juga save metadata ke disk
+10. Updated `rollback()` - juga clear metadata dari disk
+
+**Metadata structure (JSON):**
+```json
+{
+  "buildNumber": 1,
+  "patchCount": 1,
+  "version": "2.0.0",
+  "appVersionCode": 1,
+  "savedAt": "2026-09-30T16:00:03.683Z"
+}
+```
 
 ### 2026-09-30 (Build Number Fix)
 - **CORRECT LOGIC**: User clarifies that appVersionCode SHOULD reset per version
@@ -340,19 +425,11 @@ Backend:
 ### Flutter App (c:\silatar_v2)
 | File | Changes |
 |------|---------|
+| `lib/core/services/patch_service.dart` | **MAJOR FIX**: Added disk metadata (flutter_patcher directory) untuk persist state saat APK upgrade. Added methods: `_getPatchDirectory()`, `_getMetaFile()`, `_readMetadataFromDisk()`, `_writeMetadataToDisk()`, `_clearMetadataFromDisk()`. Added public `prepareForApkUpdate()` method. Updated `_checkApkUpgrade()`, `_performCleanup()`, `checkAndApplyPatch()`, `rollback()` |
+| `lib/core/widgets/update_dialog.dart` | Updated `_installApk()` to call `PatchService.instance.prepareForApkUpdate()` before opening Android installer |
 | `build.bat` | appVersionCode ALWAYS increment (never reset), buildNumber always increment |
 | `generate_patch.bat` | Auto-increment patch count per appVersionCode |
 | `lib/core/config/app_version.dart` | Hybrid versioning fields, updated comments |
-| `lib/core/services/patch_service.dart` | Added getCurrentVersionInfo(), currentVersionCode, currentVersion, fixed getFullVersion() |
-| `lib/core/services/update_service.dart` | Updated to send patch_count to backend |
-| `lib/core/widgets/update_dialog.dart` | Simplified to show only update version |
-| `lib/core/services/apk_update_service.dart` | APK download service |
-| `lib/main.dart` | Replaced getNativeVersionCode() |
-| `lib/features/welcome/welcome_page.dart` | Version display without build number |
-| `lib/features/dashboard/dashboard_page.dart` | Version display with build number |
-| `lib/features/dashboard/dashboard_content.dart` | Version display with build number |
-| `lib/features/profile/profile_content.dart` | Version display with build number |
-| `lib/features/profile/profile_page.dart` | Version display with build number |
 
 ### Laravel Backend (d:\work\SourceCode\silatarV2)
 | File | Changes |

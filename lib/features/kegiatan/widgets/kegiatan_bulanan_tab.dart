@@ -110,6 +110,15 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
             value: '${rekap.totalVolume}',
             color: const Color(0xFF1565C0),
           ),
+          if (rekap.totalDurasiMenit > 0) ...[
+            Divider(height: Responsive.spacing(24)),
+            _buildStatRow(
+              icon: Icons.schedule_rounded,
+              label: 'Total Durasi',
+              value: rekap.totalDurasiLabel ?? '-',
+              color: const Color(0xFF6A1B9A),
+            ),
+          ],
         ],
       ),
     );
@@ -120,10 +129,7 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () => _downloadPdf(month),
-        icon: Icon(
-          Icons.picture_as_pdf_rounded,
-          size: Responsive.iconSize(20),
-        ),
+        icon: Icon(Icons.picture_as_pdf_rounded, size: Responsive.iconSize(20)),
         label: Text(
           'Download PDF',
           style: TextStyle(
@@ -163,16 +169,23 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
         return;
       }
       // Show loading and generate PDF with supervisor info
-      _generatePdfWithLoading(ctx, month, scaffoldMessenger, navigator,
-          signatureName: result['name'],
-          signatureNip: result['nip']);
+      _generatePdfWithLoading(
+        ctx,
+        month,
+        scaffoldMessenger,
+        navigator,
+        signatureName: result['name'],
+        signatureNip: result['nip'],
+      );
     } else {
       // Show loading and generate PDF without supervisor info
       _generatePdfWithLoading(ctx, month, scaffoldMessenger, navigator);
     }
   }
 
-  Future<Map<String, String>?> _showSupervisorInputDialog(BuildContext context) async {
+  Future<Map<String, String>?> _showSupervisorInputDialog(
+    BuildContext context,
+  ) async {
     final nameController = TextEditingController();
     final nipController = TextEditingController();
 
@@ -333,10 +346,7 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
       }
 
       scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -355,11 +365,7 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
             color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(Responsive.radius(10)),
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: Responsive.iconSize(24),
-          ),
+          child: Icon(icon, color: color, size: Responsive.iconSize(24)),
         ),
         SizedBox(width: Responsive.spacing(16)),
         Expanded(
@@ -404,6 +410,8 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
   }
 
   Widget _buildActivityCard(KegiatanHarian group) {
+    final berWaktu = group.itemBerWaktu.toList();
+
     return Container(
       margin: EdgeInsets.only(bottom: Responsive.spacing(8)),
       padding: EdgeInsets.all(Responsive.spacing(12)),
@@ -418,52 +426,140 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.event_rounded,
+                color: const Color(0xFFEF6C00),
+                size: Responsive.iconSize(20),
+              ),
+              SizedBox(width: Responsive.spacing(12)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.label,
+                      style: TextStyle(
+                        fontSize: Responsive.fontSize(13),
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: Responsive.spacing(2)),
+                    Text(
+                      '${group.items.length} kegiatan',
+                      style: TextStyle(
+                        fontSize: Responsive.fontSize(11),
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Responsive.spacing(8),
+                  vertical: Responsive.spacing(4),
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1565C0).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(Responsive.radius(6)),
+                ),
+                child: Text(
+                  '${group.volume} vol',
+                  style: TextStyle(
+                    fontSize: Responsive.fontSize(11),
+                    color: const Color(0xFF1565C0),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (group.totalDurasiLabel != null) ...[
+            SizedBox(height: Responsive.spacing(8)),
+            _buildTotalDurasiBadge(group),
+          ],
+          if (berWaktu.isNotEmpty) ...[
+            SizedBox(height: Responsive.spacing(8)),
+            ...berWaktu.map(_buildWaktuItemRow),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalDurasiBadge(KegiatanHarian group) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: Responsive.spacing(8),
+        vertical: Responsive.spacing(4),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF6A1B9A).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(Responsive.radius(6)),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.event_rounded,
-            color: const Color(0xFFEF6C00),
-            size: Responsive.iconSize(20),
+            Icons.timelapse_rounded,
+            size: Responsive.iconSize(12),
+            color: const Color(0xFF6A1B9A),
           ),
-          SizedBox(width: Responsive.spacing(12)),
+          SizedBox(width: Responsive.spacing(4)),
+          Text(
+            'Total ${group.totalDurasiLabel}',
+            style: TextStyle(
+              fontSize: Responsive.fontSize(10),
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF6A1B9A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaktuItemRow(KegiatanItem item) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: Responsive.spacing(4)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: EdgeInsets.only(top: Responsive.spacing(2)),
+            child: Icon(
+              Icons.schedule_rounded,
+              size: Responsive.iconSize(12),
+              color: const Color(0xFFEF6C00),
+            ),
+          ),
+          SizedBox(width: Responsive.spacing(6)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  group.label,
-                  style: TextStyle(
-                    fontSize: Responsive.fontSize(13),
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: Responsive.spacing(2)),
-                Text(
-                  '${group.items.length} kegiatan',
+                  item.kegiatan,
                   style: TextStyle(
                     fontSize: Responsive.fontSize(11),
-                    color: Colors.grey[600],
+                    color: Colors.black54,
                   ),
                 ),
+                if (item.waktuLabel != null)
+                  Text(
+                    item.waktuLabel!,
+                    style: TextStyle(
+                      fontSize: Responsive.fontSize(10),
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFEF6C00),
+                    ),
+                  ),
               ],
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Responsive.spacing(8),
-              vertical: Responsive.spacing(4),
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1565C0).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(Responsive.radius(6)),
-            ),
-            child: Text(
-              '${group.volume} vol',
-              style: TextStyle(
-                fontSize: Responsive.fontSize(11),
-                color: const Color(0xFF1565C0),
-              ),
             ),
           ),
         ],
@@ -476,9 +572,7 @@ class _KegiatanBulananTabState extends State<KegiatanBulananTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: const Color(0xFFEF6C00),
-          ),
+          CircularProgressIndicator(color: const Color(0xFFEF6C00)),
           SizedBox(height: Responsive.spacing(16)),
           Text(
             'Memuat rekap...',

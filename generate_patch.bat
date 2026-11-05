@@ -42,44 +42,41 @@ echo.
 REM =============================================
 REM PATCH COUNT MANAGEMENT
 REM =============================================
-set "PATCH_COUNT_FILE=patch_counts.txt"
 
-REM Check if we have existing patch count for this appVersionCode
-set "CURRENT_PATCH_COUNT=0"
+REM Write PowerShell script for reading
+echo $f="patch_counts.txt";$ac="%APP_VERSION_CODE%";$c=Get-Content $f -Raw -EA SilentlyContinue;$sc=0;if($c){foreach($l in($c-split"[\r\n]+")){if($l-match"^\s*$ac\s*,\s*(\d+)"){$sc=[int]$Matches[1];break}}};Write-Host "CURRENT_COUNT=$sc";Write-Host "AUTO_NUM=$($sc+1)" > manage_patch.ps1
 
-if exist "%PATCH_COUNT_FILE%" (
-    for /f "tokens=1,2 delims=," %%A in ('findstr /C:"%APP_VERSION_CODE%," %PATCH_COUNT_FILE%') do (
-        if "%%A"=="%APP_VERSION_CODE%" (
-            set "CURRENT_PATCH_COUNT=%%B"
-        )
-    )
-)
+REM Read current count
+powershell -NoProfile -ExecutionPolicy Bypass -File manage_patch.ps1 > patch_info.tmp 2>&1
+
+for /f "tokens=2 delims==" %%V in ('findstr "CURRENT_COUNT=" patch_info.tmp') do set "CURRENT_PATCH_COUNT=%%V"
+for /f "tokens=2 delims==" %%V in ('findstr "AUTO_NUM=" patch_info.tmp') do set "AUTO_PATCH_NUM=%%V"
+del manage_patch.ps1 patch_info.tmp 2>nul
+
+REM Clean spaces
+set CURRENT_PATCH_COUNT=%CURRENT_PATCH_COUNT: =%
+set AUTO_PATCH_NUM=%AUTO_PATCH_NUM: =%
 
 echo [INFO] Current patch count for this version: %CURRENT_PATCH_COUNT%
+echo Auto patch number: %AUTO_PATCH_NUM%
 echo.
 
-if %CURRENT_PATCH_COUNT% GTR 0 (
-    set /a PATCH_NUM = CURRENT_PATCH_COUNT + 1
-    echo [INFO] Auto-incrementing patch number to: %PATCH_NUM%
-) else (
-    set PATCH_NUM=1
-    echo [INFO] First patch for this version. Starting at: %PATCH_NUM%
-)
-
-echo.
-echo [INPUT] Enter patch number (press Enter for auto %PATCH_NUM%):
+REM Get user input
+set USER_PATCH_NUM=
+echo [INPUT] Enter patch number (press Enter for auto %AUTO_PATCH_NUM%):
 set /p USER_PATCH_NUM="> "
 
-if not "%USER_PATCH_NUM%"=="" (
+REM Determine final patch number
+if "%USER_PATCH_NUM%"=="" (
+    set PATCH_NUM=%AUTO_PATCH_NUM%
+) else (
     set PATCH_NUM=%USER_PATCH_NUM%
-    echo [INFO] Using manual patch number: %PATCH_NUM%
 )
 
-REM Update patch count file
-if exist "%PATCH_COUNT_FILE%" (
-    powershell -Command "(Get-Content '%PATCH_COUNT_FILE%' -Raw) -replace '%APP_VERSION_CODE%,\d+', '' | Set-Content '%PATCH_COUNT_FILE%'"
-)
-echo %APP_VERSION_CODE%,%PATCH_NUM%>> %PATCH_COUNT_FILE% 2>nul
+echo [INFO] Using patch number: %PATCH_NUM%
+
+REM Save new count using PowerShell - simple one-liner approach
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$f='patch_counts.txt';$ac='%APP_VERSION_CODE%';$pn='%PATCH_NUM%';$c=Get-Content $f -Raw -EA SilentlyContinue;$l=@();if($c){$l=@($c -split '[\r\n]+' | ?{$_ -notmatch ('^'+$ac+'\s*,') -and $_ -match '\S'})};$l+=$ac+','+$pn;$l | ?{$_ -match '\S'} | Set-Content $f"
 
 REM =============================================
 REM GENERATE PATCH INFO
