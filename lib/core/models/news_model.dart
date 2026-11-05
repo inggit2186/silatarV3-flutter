@@ -11,6 +11,11 @@ class NewsModel {
   final DateTime? publishDate;
   final bool isFeatured;
   final bool isSlideshow;
+  final String? writer;
+  final String? editor;
+  final String? photographer;
+  final int viewCount;
+  final int uniqueViewCount;
 
   NewsModel({
     required this.id,
@@ -24,6 +29,11 @@ class NewsModel {
     this.publishDate,
     this.isFeatured = false,
     this.isSlideshow = false,
+    this.writer,
+    this.editor,
+    this.photographer,
+    this.viewCount = 0,
+    this.uniqueViewCount = 0,
   });
 
   factory NewsModel.fromJson(Map<String, dynamic> json) {
@@ -41,7 +51,17 @@ class NewsModel {
           : null,
       isFeatured: json['is_featured'] == true,
       isSlideshow: json['is_slideshow'] == true,
+      writer: _clean(json['writer']),
+      editor: _clean(json['editor']),
+      photographer: _clean(json['photographer']),
+      viewCount: (json['view_count'] as num?)?.toInt() ?? 0,
+      uniqueViewCount: (json['unique_view_count'] as num?)?.toInt() ?? 0,
     );
+  }
+
+  static String? _clean(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? null : text;
   }
 
   Map<String, dynamic> toJson() {
@@ -57,11 +77,22 @@ class NewsModel {
       'publish_date': publishDate?.toIso8601String(),
       'is_featured': isFeatured,
       'is_slideshow': isSlideshow,
+      'writer': writer,
+      'editor': editor,
+      'photographer': photographer,
+      'view_count': viewCount,
+      'unique_view_count': uniqueViewCount,
     };
   }
 
   /// Apakah berita memiliki cover image
   bool get hasCover => (imageUrl ?? '').isNotEmpty;
+
+  /// Apakah ada info kredit (penulis/editor/fotografer)
+  bool get hasCredits =>
+      (writer ?? '').isNotEmpty ||
+      (editor ?? '').isNotEmpty ||
+      (photographer ?? '').isNotEmpty;
 }
 
 /// Hasil paginasi daftar berita

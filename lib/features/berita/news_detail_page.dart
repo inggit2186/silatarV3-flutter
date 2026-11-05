@@ -132,6 +132,9 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
                     SizedBox(height: Responsive.spacing(14)),
                     _buildContent(context),
                     SizedBox(height: Responsive.spacing(24)),
+                    _buildCredits(context),
+                    if (_news.hasCredits)
+                      SizedBox(height: Responsive.spacing(12)),
                     _buildFooter(context),
                     SizedBox(height: Responsive.spacing(24)),
                   ],
@@ -258,7 +261,162 @@ class _NewsDetailPageState extends State<NewsDetailPage> {
               ),
             ],
           ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.visibility_rounded,
+              size: Responsive.iconSize(11),
+              color: NeoMiraiColors.inkSoft,
+            ),
+            SizedBox(width: Responsive.spacing(4)),
+            Text(
+              '${_formatCount(_news.viewCount)} dilihat',
+              style: TextStyle(
+                fontSize: Responsive.fontSize(isSmall ? 9 : 10),
+                color: NeoMiraiColors.inkSoft,
+              ),
+            ),
+          ],
+        ),
+        if (_news.uniqueViewCount > 0)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.people_alt_rounded,
+                size: Responsive.iconSize(11),
+                color: NeoMiraiColors.inkSoft,
+              ),
+              SizedBox(width: Responsive.spacing(4)),
+              Text(
+                '${_formatCount(_news.uniqueViewCount)} pembaca',
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(isSmall ? 9 : 10),
+                  color: NeoMiraiColors.inkSoft,
+                ),
+              ),
+            ],
+          ),
       ],
+    );
+  }
+
+  /// Format angka jumlah dilihat (mis. 1200 -> 1,2 rb)
+  String _formatCount(int value) {
+    if (value < 1000) return '$value';
+    if (value < 1000000) {
+      final thousands = value / 1000;
+      final text = thousands >= 100
+          ? thousands.round().toString()
+          : thousands.toStringAsFixed(1).replaceAll('.', ',');
+      return '${text.replaceAll(',0', '')} rb';
+    }
+    final millions = value / 1000000;
+    return '${millions.toStringAsFixed(1).replaceAll('.', ',').replaceAll(',0', '')} jt';
+  }
+
+  /// Kredit penulis, editor, dan fotografer (hanya tampil bila ada data)
+  Widget _buildCredits(BuildContext context) {
+    if (!_news.hasCredits) return const SizedBox.shrink();
+
+    final bool isSmall = context.isSmallPhone;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(Responsive.spacing(12)),
+      decoration: BoxDecoration(
+        color: NeoMiraiColors.rice,
+        borderRadius: BorderRadius.circular(Responsive.radius(12)),
+        border: Border.all(color: NeoMiraiColors.line.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.badge_rounded,
+                size: Responsive.iconSize(14),
+                color: NeoMiraiColors.gold,
+              ),
+              SizedBox(width: Responsive.spacing(6)),
+              Text(
+                'Kredit Berita',
+                style: TextStyle(
+                  fontSize: Responsive.fontSize(isSmall ? 9 : 10),
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                  color: NeoMiraiColors.ink,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: Responsive.spacing(10)),
+          if ((_news.writer ?? '').isNotEmpty)
+            _buildCreditRow(
+              context,
+              icon: Icons.edit_note_rounded,
+              label: 'Penulis',
+              value: _news.writer!,
+            ),
+          if ((_news.editor ?? '').isNotEmpty)
+            _buildCreditRow(
+              context,
+              icon: Icons.fact_check_outlined,
+              label: 'Editor',
+              value: _news.editor!,
+            ),
+          if ((_news.photographer ?? '').isNotEmpty)
+            _buildCreditRow(
+              context,
+              icon: Icons.photo_camera_rounded,
+              label: 'Fotografer',
+              value: _news.photographer!,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreditRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    final bool isSmall = context.isSmallPhone;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: Responsive.spacing(6)),
+      child: Row(
+        children: [
+          Icon(icon, size: Responsive.iconSize(13), color: NeoMiraiColors.gold),
+          SizedBox(width: Responsive.spacing(8)),
+          SizedBox(
+            width: isSmall ? 66 : 74,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: Responsive.fontSize(isSmall ? 9 : 10),
+                color: NeoMiraiColors.ash,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: Responsive.fontSize(isSmall ? 9 : 10),
+                fontWeight: FontWeight.w600,
+                color: NeoMiraiColors.ink,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
